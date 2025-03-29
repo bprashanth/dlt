@@ -24,6 +24,7 @@ Eg to run the samclip directory
 ```console 
 $ cd samclip
 $ docker run -it --rm \
+  --net host \
   -v $(pwd):/app \
   -w /app \
   sam-clip \
