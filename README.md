@@ -17,7 +17,7 @@ samclip/
 
 Build 
 ```console 
-$ docker build -t sam-clip .
+$ docker build -t sam-clip:0.2 .
 ```
 
 Eg to run the samclip directory
@@ -27,9 +27,10 @@ $ docker run -it --rm \
   --net host \
   -v $(pwd):/app \
   -w /app \
-  sam-clip \
+  sam-clip:0.2 \
   bash
-$ python app/run_sam_clip.py
+$ rm -rf ./output/* && python sam_clip.py --image lantana.jpg --output_dir ./output/ --model {maskrcnn, samclip, groundingdino}
+$ 
 ```
 
 
