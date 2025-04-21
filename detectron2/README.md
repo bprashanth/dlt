@@ -25,16 +25,18 @@ $ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1
 ```
 To save the logs to file 
 ```
-$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1 python train.py > training.log 2>&1
+$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1 python model.py > training.log 2>&1
 ```
 The checkpoints are saved  to `output/checkpoints`
+
 
 ## Inference 
 
 If `train_data` is set to None/empty, the program runs inference against the images in `--inference_data` using the weights in `--weights_path`. 
 
 ```
-$ python ./train.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
+$ docker run -it --rm --net host -v $(pwd):/app --entrypoint /bin/bash detectron2:0.1 
+$ python ./model.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
 ```
 
 The output is saved to `output/images`

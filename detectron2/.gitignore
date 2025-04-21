@@ -164,5 +164,5 @@ cython_debug/
 # git sub-repos
 .git/
 
-# output dir 
-output/
+# checkpoints from model training are typically too bulky for git 
+output/checkpoints
