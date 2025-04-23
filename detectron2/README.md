@@ -74,6 +74,8 @@ app/
 
 Where the annotations are in `COCO` json format. 
 Once the validation is complete, you must manually copy the  data into the `train`, `val` and `test` dirs before training the model. 
+The validation script will also print out a list of classes, which you currently need to replace in the `model.py` file. 
+
 
 ## Assets
 
