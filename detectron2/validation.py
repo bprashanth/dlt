@@ -1,10 +1,10 @@
 """Validate new datasets and extract classes by intersecting polygons. 
 
-1. Walk through directories starting from root_dir. 
-2. For every tiff found, read it's bounding box 
-3. Look through every polygon in the shp file for intersecting polygons 
-4. For each intersecting polygon, register the class name as belonging to that site 
-5. Print a summary 
+This scripts works on the output of the discovery script. 
+
+1. For every tiff discovered, read it's bounding box. 
+2. Look through every polygon in the discovered shp file for intersecting polygons 
+3. For each intersecting polygon, register the class name as belonging to that site 
 
 Usage: 
     source venv/bin/activate 
@@ -22,53 +22,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class DataPreprocessor:
-    def __init__(self, root_dir):
-        self.root_dir = root_dir
+class DataValidator:
+    def __init__(self, discovery_results):
+        self.tiff_files = discovery_results["tiff_files"]
+        self.shapefile = discovery_results["shapefile"]
+        self.gdf = gpd.read_file(self.shapefile)
         self.results = []
         self.all_classes = {}
-        self._load_shapefile()
-        self.tiff_files = self._discover_tiffs()
-
-    def _load_shapefile(self):
-        """Load the first shapefile found in the root_dir."""
-        shp_files = [f for f in os.listdir(
-            self.root_dir) if f.endswith(".shp")]
-        if not shp_files:
-            raise FileNotFoundError(f"No shapefiles found in {self.root_dir}")
-
-        self.base_shp = os.path.join(self.root_dir, shp_files[0])
-        self.gdf = gpd.read_file(self.base_shp)
-
-    def _discover_tiffs(self):
-        """Recursively find all site .tiff files under root_dir.
-
-        This function matches site directories with site.tiff files and ignores all other tiff files. Eg: 
-
-        /foo/bar/site_1/site_1.tiff
-        /foo/bar/site_1/Bamboo/bamboo_123.tiff
-        /foo/bar/site_1/Bamboo/bamboo.tiff
-
-        This function will return: 
-        /foo/bar/site_1/site_1.tiff
-        /foo/bar/site_1/Bamboo/bamboo.tiff
-        """
-        main_tiffs = []
-
-        for subdir, dirs, files in os.walk(self.root_dir):
-            dir_name_raw = os.path.basename(subdir)
-            dir_name_normalized = dir_name_raw.lower().replace(" ", "_")
-
-            for file in files:
-                if file.lower().endswith(".tiff"):
-                    file_stem = os.path.splitext(file)[0].lower()
-                    if file_stem == dir_name_normalized:
-                        main_tiffs.append(os.path.join(subdir, file))
-        return main_tiffs
 
     def _process_tiff(self, tiff_path):
         """For a given TIFF, find intersecting  polygons and return site info."""
-        rel_path = os.path.relpath(tiff_path, self.root_dir)
+        rel_path = os.path.relpath(tiff_path, os.path.dirname(self.shapefile))
 
         try:
             with rasterio.open(tiff_path) as src:

@@ -2,44 +2,30 @@
 
 Drone Lantana Detectors based on Detectron2
 
-## Training 
+## Quickstart 
 
-The docker container is setup for training. If the data is laid out in the following format
+* Discovery: discover the site tiff files and the main shp file 
+* Validation: validate the polygons intersect between the tiffs and the shp file 
+* Tiling: split up the tiff into tiled 'pngs'
+* Annotation Transformation: intersect the bounds of each tile with the main shp file and generate COCO annotations, clipping polygons where necessary 
+* Training: fine-tune detectron2 on the COCO annotations 
+* Infernce: run inference on new images 
+
+* Steps 1-4: Discovery, validation, tiling and COCO annotation transformation
 ```
-root_dir/
-├── val
-├── train/
-│   └── annotations.json
-│   └── imag1.png
-│ 
-├── test/
-│   └── annotations.json
-│   └── imag1.png
-...
+$ python main.py --root_dir ... --tile_output_dir ... --train_dir ... --val_dir ... 
 ```
 
-simply running the docker will run training. 
-```console 
-$ docker build -t detectron2:0.1 .
-$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1
+* Step 5: Train 
 ```
-To save the logs to file 
-```
-$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1 python model.py > training.log 2>&1
-```
-The checkpoints are saved  to `output/checkpoints`
-
-
-## Inference 
-
-If `train_data` is set to None/empty, the program runs inference against the images in `--inference_data` using the weights in `--weights_path`. 
-
-```
-$ docker run -it --rm --net host -v $(pwd):/app --entrypoint /bin/bash detectron2:0.1 
-$ python ./model.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
+docker run -d --rm --net host -v $(pwd):/app detectron2:0.1
 ```
 
-The output is saved to `output/images`
+* Step 6: Inference 
+```
+docker run -it --rm --net host -v $(pwd):/app --entrypoint /bin/bash detectron2:0.1 
+$ python ./main.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
+```
 
 ## Data Processing
 
@@ -74,8 +60,47 @@ app/
 
 Where the annotations are in `COCO` json format. 
 Once the validation is complete, you must manually copy the  data into the `train`, `val` and `test` dirs before training the model. 
-The validation script will also print out a list of classes, which you currently need to replace in the `model.py` file. 
+The validation script will also print out a list of classes, which you currently need to replace in the `main.py` file. 
 
+
+## Training 
+
+The docker container is setup for training. If the data is laid out in the following format
+```
+root_dir/
+├── val
+├── train/
+│   └── annotations.json
+│   └── imag1.png
+│ 
+├── test/
+│   └── annotations.json
+│   └── imag1.png
+...
+```
+
+simply running the docker will run training. 
+```console 
+$ docker build -t detectron2:0.1 .
+$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1
+```
+To save the logs to file 
+```
+$ docker run -d --rm --net host -v $(pwd):/app detectron2:0.1 python main.py > training.log 2>&1
+```
+The checkpoints are saved  to `output/checkpoints`
+
+
+## Inference 
+
+If `train_data` is set to None/empty, the program runs inference against the images in `--inference_data` using the weights in `--weights_path`. 
+
+```
+$ docker run -it --rm --net host -v $(pwd):/app --entrypoint /bin/bash detectron2:0.1 
+$ python ./main.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
+```
+
+The output is saved to `output/images`
 
 ## Assets
 
