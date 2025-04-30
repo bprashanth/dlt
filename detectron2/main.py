@@ -5,6 +5,7 @@ import logging
 import json
 from validation import DataValidator
 from discovery import DataDiscovery
+from tile_generator import TileGenerator
 
 
 def setup_logger(log_level=logging.INFO):
@@ -32,12 +33,12 @@ def main():
                         help="Path to the root directory containing site directories")
     parser.add_argument("--name_key", type=str, default="Name",
                         help="The key in the shapefile that contains the class names")
-    # parser.add_argument("--tile_output_dir", type=str, required=True,
-    #                     help="Where to save tiles and intermediate JSON")
-    # parser.add_argument("--tile_size", type=int,
-    #                     default=512, help="Tile size in pixels")
-    # parser.add_argument("--overlap", type=int, default=128,
-    #                     help="Overlap between tiles in pixels")
+    parser.add_argument("--tile_output_dir", type=str, required=True,
+                        help="Where to save tiles and intermediate JSON")
+    parser.add_argument("--tile_size", type=int,
+                        default=512, help="Tile size in pixels")
+    parser.add_argument("--overlap", type=int, default=128,
+                        help="Overlap between tiles in pixels")
     # parser.add_argument("--train_dir", type=str, required=True,
     #                     help="Path to write train images and annotation")
     # parser.add_argument("--val_dir", type=str, required=True,
@@ -57,8 +58,8 @@ def main():
     # Discovery
     discovery = DataDiscovery(args.root_dir, args.name_key)
     discovery_results = discovery.get_discovery_results()
-    logging.debug("\nDiscovery Results:")
-    logging.info(json.dumps(discovery_results, indent=2))
+    logging.info("Step 1: Discovery")
+    logging.debug(json.dumps(discovery_results, indent=2))
 
     # Validation
     validator = DataValidator(discovery_results)
@@ -67,6 +68,16 @@ def main():
     logging.debug(json.dumps(validation_results, indent=2))
     logging.debug("\nClass Distribution:")
     logging.debug(validator.get_classes())
+    logging.info("Step 2: Validation")
+
+    logging.info(f"Step 3: Tile Generation: {tile_metadata_path}")
+    tile_generator = TileGenerator(
+        discovery_results,
+        args.tile_output_dir,
+        args.tile_size,
+        args.overlap
+    )
+    tile_metadata_path = tile_generator.generate_tiles()
 
 
 if __name__ == "__main__":
