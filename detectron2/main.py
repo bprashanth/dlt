@@ -30,6 +30,8 @@ def main():
         description="Validate new datasets before copying them into app/data")
     parser.add_argument("--root_dir", type=str, required=True,
                         help="Path to the root directory containing site directories")
+    parser.add_argument("--name_key", type=str, default="Name",
+                        help="The key in the shapefile that contains the class names")
     # parser.add_argument("--tile_output_dir", type=str, required=True,
     #                     help="Where to save tiles and intermediate JSON")
     # parser.add_argument("--tile_size", type=int,
@@ -53,17 +55,18 @@ def main():
     setup_logger(getattr(logging, args.log_level.upper()))
 
     # Discovery
-    discovery = DataDiscovery(args.root_dir)
+    discovery = DataDiscovery(args.root_dir, args.name_key)
     discovery_results = discovery.get_discovery_results()
+    logging.debug("\nDiscovery Results:")
+    logging.info(json.dumps(discovery_results, indent=2))
 
     # Validation
     validator = DataValidator(discovery_results)
     validation_results = validator.validate()
-    print("\nValidation Results:")
-    print(json.dumps(validation_results, indent=2))
-
-    print("\nClass Distribution:")
-    print(validator.get_classes())
+    logging.debug("\nValidation Results:")
+    logging.debug(json.dumps(validation_results, indent=2))
+    logging.debug("\nClass Distribution:")
+    logging.debug(validator.get_classes())
 
 
 if __name__ == "__main__":
