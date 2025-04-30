@@ -1,22 +1,35 @@
 """Discover the relevant files for training from new datasets.
 
 Usage: 
-    source venv/bin/activate 
-    python3 main.py --root_dir /path/to/root/dir --log_level DEBUG
+    DataDiscovery(root_dir).get_discovery_results()
 """
 
 import os
 import logging
+import geopandas as gpd
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
 
 
 class DataDiscovery:
-    def __init__(self, root_dir):
+    """Discover the relevant files for training from new datasets.
+
+    @param root_dir: The root directory to search for data.
+    @param name_key: The key in the shapefile that contains the class names.
+
+    @return: A dictionary with the following keys:
+        - tiff_files: A list of paths to the site .tiff files.
+        - shapefile: The path to the shapefile.
+        - classes: A list of class names.   
+    """
+
+    def __init__(self, root_dir, name_key="Name"):
         self.root_dir = root_dir
         self.tiff_files = self._discover_tiffs()
         self.shapefile = self._discover_shapefile()
+        self.name_key = name_key
+        self.classes = self._discover_classes()
 
     def _discover_tiffs(self):
         """Recursively find all site .tiff files under root_dir.
@@ -52,8 +65,18 @@ class DataDiscovery:
             raise FileNotFoundError(f"No shapefiles found in {self.root_dir}")
         return os.path.join(self.root_dir, shp_files[0])
 
+    def _discover_classes(self):
+        """Discover the classes in the shapefile."""
+        gdf = gpd.read_file(self.shapefile)
+        if self.name_key not in gdf.columns:
+            raise ValueError(
+                f"Shapefile {self.shapefile} does not contain a {self.name_key} column")
+        return sorted(gdf[self.name_key].dropna().unique().tolist())
+
     def get_discovery_results(self):
         return {
             "tiff_files": self.tiff_files,
-            "shapefile": self.shapefile
+            "shapefile": self.shapefile,
+            "classes": self.classes,
+            "name_key": self.name_key
         }

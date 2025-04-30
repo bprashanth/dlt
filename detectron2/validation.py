@@ -17,15 +17,36 @@ import rasterio
 from shapely.geometry import box
 import fiona
 import logging
+from exceptions import InputException
+from exceptions import ValidationException
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
 
 
 class DataValidator:
+    """Validate the dataset and collect class information.
+
+    @param discovery_results: The output of the discovery script.
+
+    @return: A list of dictionaries with the following keys:
+        - site: The relative path to the site file.
+        - area: The area of the site taken from the bounding box of the TIFF. 
+        - classes: A dictionary with the class name as the key and the count as the value, of all the classes found in the TIFF (i.e all the intersecting polygons with the shp file and the TIFF perimeter).
+
+    @raises: 
+        - InputError: If the discovery results are not valid.
+        - ValidationError: If no classes are found in the TIFFs, i.e no TIFF intersects with the shp file. This indicates a mismatch somewhere, either in the crs, or the sites and the shp file. 
+    """
+
     def __init__(self, discovery_results):
-        self.tiff_files = discovery_results["tiff_files"]
-        self.shapefile = discovery_results["shapefile"]
+        try:
+            self.tiff_files = discovery_results["tiff_files"]
+            self.shapefile = discovery_results["shapefile"]
+            self.name_key = discovery_results["name_key"]
+        except KeyError as e:
+            raise InputException(f"Invalid discovery results: {e}")
+
         self.gdf = gpd.read_file(self.shapefile)
         self.results = []
         self.all_classes = {}
@@ -49,10 +70,12 @@ class DataValidator:
                     tiff_polygon)]
 
                 if not intersecting.empty:
-                    class_counts = intersecting['Name'].value_counts(
+                    class_counts = intersecting[self.name_key].value_counts(
                     ).to_dict()
                 else:
                     class_counts = {}
+                    logging.warning(
+                        f"No intersecting polygons found for {tiff_path}")
 
                 area = tiff_polygon.area
 
@@ -84,6 +107,10 @@ class DataValidator:
                 for class_name, count in site_info['classes'].items():
                     self.all_classes[class_name] = self.all_classes.get(
                         class_name, 0) + count
+
+        if not any('classes' in result and result['classes']
+                   for result in self.results):
+            raise ValidationException("No classes found in validation results")
 
         return self.results
 
