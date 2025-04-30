@@ -166,3 +166,33 @@ cython_debug/
 
 # checkpoints from model training are typically too bulky for git 
 output/
+
+# selectively ignore most of the data directory 
+# Ignore all files within the test, train, and val directories
+test/*
+train/*
+val/*
+
+# Keep the directory structure
+!test/
+!train/
+!val/
+
+# Keep the labels.txt file
+!labels.txt
+
+# Do not ignore json files within test, train, and val
+!test/*.json
+!train/*.json
+!val/*.json
+
+# Ignore common image file extensions at the top level and within subdirectories
+*.jpg
+*.jpeg
+*.tiff
+*.tif
+*.png
+*.gif
+*.bmp
+*.webp
+*.heic
