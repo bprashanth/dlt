@@ -172,11 +172,13 @@ output/
 test/*
 train/*
 val/*
+tile/*
 
 # Keep the directory structure
 !test/
 !train/
 !val/
+!tile/
 
 # Keep the labels.txt file
 !labels.txt
@@ -185,6 +187,7 @@ val/*
 !test/*.json
 !train/*.json
 !val/*.json
+!tile/*.json
 
 # Ignore common image file extensions at the top level and within subdirectories
 *.jpg
@@ -196,3 +199,4 @@ val/*
 *.bmp
 *.webp
 *.heic
+*.png.aux.xml
