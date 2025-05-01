@@ -58,13 +58,15 @@ class TileGenerator:
     @param tile_size: The size of the tiles to generate.
     @param overlap: The overlap between tiles.
     @param max_tiles: The maximum number of tiles to generate.
+    @param skip_threshold: The minimum percent of valid pixels required in a tile to be included in the dataset. The default is 10%.
     """
 
-    def __init__(self, discovery_results, output_dir, tile_size=512, overlap=128):
+    def __init__(self, discovery_results, output_dir, tile_size=512, overlap=128, skip_threshold=10.0):
         self.tiff_files = discovery_results["tiff_files"]
         self.output_dir = output_dir
         self.tile_size = tile_size
         self.overlap = overlap
+        self.skip_threshold = skip_threshold
         self.tile_output_dir = os.path.join(output_dir, "images")
         self.tile_metadata = []
         os.makedirs(self.tile_output_dir, exist_ok=True)
@@ -74,7 +76,22 @@ class TileGenerator:
             self._tile_single_tiff(tiff_path)
         return self._save_metadata()
 
+    def _is_tile_valid(self, mask_array):
+        """Check if a tile is valid basis the % of data pixels. 
+
+        @param mask_array (ndarray): Mask cropped to the tile window
+            shape = (H, W)
+
+        @returns bool: True if tile should be kept, False otherwise.
+        """
+        total_pixels = mask_array.size
+        valid_pixels = (mask_array > 0).sum()
+
+        valid_percent = (valid_pixels / total_pixels) * 100
+        return valid_percent >= self.skip_threshold
+
     def _tile_single_tiff(self, tiff_path):
+        skipped_tiles = []
         site_name = os.path.splitext(os.path.basename(tiff_path))[0]
 
         with rasterio.open(tiff_path) as src:
@@ -114,6 +131,28 @@ class TileGenerator:
                     tile_path = os.path.join(
                         self.tile_output_dir, tile_filename)
 
+                    # This mask contains the nodata value for this tile. It
+                    # could be "0", or transparent, depending on the tiff.
+                    # image = [
+                    #     [10, 10],
+                    #     [0, 0]    transparent/nodata pixels
+                    # ]
+                    # mask = [
+                    #     [1, 1],
+                    #     [0, 0]    mask shows these as invalid
+                    # ]
+                    mask = src.read_masks(1)
+
+                    # Crop the mask to the current tile window.
+                    tile_mask = mask[
+                        window.row_off:window.row_off + window.height,
+                        window.col_off:window.col_off + window.width
+                    ]
+
+                    if not self._is_tile_valid(tile_mask):
+                        skipped_tiles.append(tile_filename)
+                        continue
+
                     # Overwrite existing tiles.
                     # Since we are writing to PNG, rasterio will also supply a .
                     # aux.xml file with the metadata from the tiff. If this is
@@ -141,6 +180,11 @@ class TileGenerator:
                         "pixel_origin": [x, y],
                         "crs": crs.to_string(),
                     })
+
+        if skipped_tiles:
+            logging.info(
+                f"Skipped {len(skipped_tiles)} tiles for {site_name}.")
+        return
 
     def _save_metadata(self):
         metadata_path = os.path.join(self.output_dir, "tiles_metadata.json")

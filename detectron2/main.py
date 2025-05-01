@@ -39,6 +39,8 @@ def main():
                         default=512, help="Tile size in pixels")
     parser.add_argument("--overlap", type=int, default=128,
                         help="Overlap between tiles in pixels")
+    parser.add_argument("--skip_threshold", type=float, default=10.0,
+                        help="Minimum percent of valid pixels required in a tile to be included in the dataset. This argument is used to skip tiles that are mostly transparent/nodata. Setting to 10.0 means that tiles with 10% or more valid pixels will be included.")
     # parser.add_argument("--train_dir", type=str, required=True,
     #                     help="Path to write train images and annotation")
     # parser.add_argument("--val_dir", type=str, required=True,
@@ -70,14 +72,16 @@ def main():
     logging.debug(validator.get_classes())
     logging.info("Step 2: Validation")
 
-    logging.info(f"Step 3: Tile Generation: {tile_metadata_path}")
+    logging.info(f"Step 3: Tile Generation")
     tile_generator = TileGenerator(
         discovery_results,
         args.tile_output_dir,
         args.tile_size,
-        args.overlap
+        args.overlap,
+        args.skip_threshold
     )
     tile_metadata_path = tile_generator.generate_tiles()
+    logging.debug(f"Tile metadata saved to: {tile_metadata_path}")
 
 
 if __name__ == "__main__":
