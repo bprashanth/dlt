@@ -252,6 +252,11 @@ def run_inference(cfg, weights_path, inference_data, output_dir, logger=None):
     logger.info(f"Inference completed. Results saved in {output_images_dir}")
 
 
+# TODO(prashanth@): use this instead of hardcoding CLASSES
+# def get_num_classes(annotation_file):
+#     with open(annotation_file) as f:
+#        return len(json.load(f)['categories'])
+
 def main():
     parser = argparse.ArgumentParser(
         description="Train and run inference for Detectron2.")

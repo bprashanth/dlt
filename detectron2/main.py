@@ -31,8 +31,10 @@ def main():
         description="Validate new datasets before copying them into app/data")
     parser.add_argument("--root_dir", type=str, required=True,
                         help="Path to the root directory containing site directories")
-    parser.add_argument("--name_key", type=str, default="Name",
-                        help="The key in the shapefile that contains the class names")
+    parser.add_argument("--class_name_key", type=str, default="Name",
+                        help="The key in the shapefile that contains the class names - these are the english names of the classes")
+    parser.add_argument("--class_id_key", type=str, default="Type",
+                        help="The key in the shapefile that contains the class ids - these are the ids of the classes")
     parser.add_argument("--tile_output_dir", type=str, required=True,
                         help="Where to save tiles and intermediate JSON")
     parser.add_argument("--tile_size", type=int,
@@ -58,7 +60,8 @@ def main():
     setup_logger(getattr(logging, args.log_level.upper()))
 
     # Discovery
-    discovery = DataDiscovery(args.root_dir, args.name_key)
+    discovery = DataDiscovery(
+        args.root_dir, args.class_name_key, args.class_id_key)
     discovery_results = discovery.get_discovery_results()
     logging.info("Step 1: Discovery")
     logging.debug(json.dumps(discovery_results, indent=2))
