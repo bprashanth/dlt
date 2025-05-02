@@ -2,11 +2,21 @@
 
 Usage: 
     DataDiscovery(root_dir).get_discovery_results()
+
+Returns: 
+{
+    "tiff_files": [list of paths to tiff files in root dir],
+    "shapefile": path to shapefile in root dir,
+    "class_map": {class name: class id},
+    "name_key": [name of the key in the shapefile that contains the class names]
+}
 """
 
 import os
 import logging
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
@@ -24,11 +34,12 @@ class DataDiscovery:
         - classes: A list of class names.   
     """
 
-    def __init__(self, root_dir, name_key="Name"):
+    def __init__(self, root_dir, name_key="Name", id_key="Type"):
         self.root_dir = root_dir
         self.tiff_files = self._discover_tiffs()
         self.shapefile = self._discover_shapefile()
         self.name_key = name_key
+        self.id_key = id_key
         self.classes = self._discover_classes()
 
     def _discover_tiffs(self):
@@ -66,17 +77,55 @@ class DataDiscovery:
         return os.path.join(self.root_dir, shp_files[0])
 
     def _discover_classes(self):
-        """Discover the classes in the shapefile."""
+        """Discover the classes and their IDs in the shapefile. 
+
+        @return: A dictionary with the class name as the key and the class ID as the value.
+
+        @raises: 
+            ValueError: If required columns are missing of it IDs are invalid. 
+        """
+        # TODO(prashanth@): this should NOT be taken from the shapefile. We
+        # should have an internal mapping of class names to IDs.
         gdf = gpd.read_file(self.shapefile)
+
         if self.name_key not in gdf.columns:
             raise ValueError(
                 f"Shapefile {self.shapefile} does not contain a {self.name_key} column")
-        return sorted(gdf[self.name_key].dropna().unique().tolist())
+
+        if self.id_key not in gdf.columns:
+            raise ValueError(
+                f"Shapefile {self.shapefile} does not contain a {self.id_key} column")
+
+        # Create initial name->id mapping from unique combinations
+        class_map = dict(zip(gdf[self.name_key], gdf[self.id_key]))
+
+        # Remove NaN/None entries
+        class_map = {k: v for k, v in class_map.items() if pd.notna(k)
+                     and pd.notna(v)}
+
+        # Verify all IDs are integers
+        for name, id_val in class_map.items():
+            if not isinstance(id_val, (int, np.integer)):
+                raise ValueError(
+                    f"Invalid ID type for class {name}: {type(id_val)}. Must be integer.")
+
+        # Adjust IDs to start at 1 for COCO compatibility
+        min_id = min(class_map.values())
+        adjustment = 1 - min_id if min_id < 1 else 0
+
+        if adjustment != 0:
+            logger.info(
+                f"Adjusting class IDs by +{adjustment} to ensure COCO compatibility (ids start at 1)")
+            class_map = {name: id_val + adjustment for name,
+                         id_val in class_map.items()}
+
+        return class_map
 
     def get_discovery_results(self):
         return {
             "tiff_files": self.tiff_files,
             "shapefile": self.shapefile,
-            "classes": self.classes,
-            "name_key": self.name_key
+            "class_map": self.class_map,
+            "name_key": self.name_key,
+            "id_key": self.id_key
         }
