@@ -19,7 +19,7 @@ import fiona
 import logging
 from exceptions import InputException
 from exceptions import ValidationException
-
+from geometry import GeometryValidator
 # Get module-level logger
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class DataValidator:
         - ValidationError: If no classes are found in the TIFFs, i.e no TIFF intersects with the shp file. This indicates a mismatch somewhere, either in the crs, or the sites and the shp file. 
     """
 
-    def __init__(self, discovery_results):
+    def __init__(self, discovery_results, strict=False):
         try:
             self.tiff_files = discovery_results["tiff_files"]
             self.shapefile = discovery_results["shapefile"]
@@ -47,9 +47,13 @@ class DataValidator:
         except KeyError as e:
             raise InputException(f"Invalid discovery results: {e}")
 
+        self.strict = strict
         self.gdf = gpd.read_file(self.shapefile)
         self.results = []
         self.all_classes = {}
+
+        # Fix geometries
+        self.geometry_validator = GeometryValidator(self.gdf)
 
     def _process_tiff(self, tiff_path):
         """For a given TIFF, find intersecting  polygons and return site info."""
@@ -96,6 +100,12 @@ class DataValidator:
     def validate(self):
         """Validate the dataset and collect class information."""
         logger.info(f"Processing {len(self.tiff_files)} TIFF files")
+
+        # Validate and fix geometries. If strict is True, this will raise an
+        # error, if it's False, it will dry run through fixing the errors and
+        # log issues.
+        self.geometry_validator.fix(strict_fix=self.strict)
+
         self.results = []
         self.all_classes = {}
 

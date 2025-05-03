@@ -77,7 +77,22 @@ dataset/
 ├── annotations.json
 ```
 
+## Normalization 
 
+Current situation
+
+1. Images from same drone capture 
+2. Likely consistent lighting conditions, altitude, camera settings 
+3. Similar color distributions and exposure levels 
+
+So we don't normalize 
+
+## Finding class distributions 
+
+Change the path in the shp variable in the `type_name_combos.py` script and run 
+```
+$ python3 ./hack/type_name_combos.py
+```
 
 
 
