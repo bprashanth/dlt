@@ -59,14 +59,16 @@ class TileGenerator:
     @param overlap: The overlap between tiles.
     @param max_tiles: The maximum number of tiles to generate.
     @param skip_threshold: The minimum percent of valid pixels required in a tile to be included in the dataset. The default is 10%.
+    @param no_tile: If True, preserves each TIFF as a single PNG without tiling.
     """
 
-    def __init__(self, discovery_results, output_dir, tile_size=512, overlap=128, skip_threshold=10.0):
+    def __init__(self, discovery_results, output_dir, tile_size=512, overlap=128, skip_threshold=10.0, no_tile=False):
         self.tiff_files = discovery_results["tiff_files"]
         self.output_dir = output_dir
         self.tile_size = tile_size
         self.overlap = overlap
         self.skip_threshold = skip_threshold
+        self.no_tile = no_tile
         self.tile_output_dir = os.path.join(output_dir, "images")
         self.tile_metadata = []
         os.makedirs(self.tile_output_dir, exist_ok=True)
@@ -99,6 +101,37 @@ class TileGenerator:
             height = src.height
             transform = src.transform
             crs = src.crs
+
+            if self.no_tile:
+                # Handle entire TIFF as one tile
+                window = Window(0, 0, width, height)
+                tile_transform = src.transform
+                tile_bounds = src.bounds
+                tile_img = src.read()
+                tile_filename = f"{site_name}.png"
+                tile_path = os.path.join(self.tile_output_dir, tile_filename)
+
+                with rasterio.open(
+                    tile_path,
+                    "w",
+                    driver="PNG",
+                    height=height,
+                    width=width,
+                    count=src.count,
+                    dtype=tile_img.dtype,
+                    transform=tile_transform,
+                    crs=crs
+                ) as dst:
+                    dst.write(tile_img)
+
+                self.tile_metadata.append({
+                    "filename": tile_filename,
+                    "site": site_name,
+                    "tile_bounds": list(tile_bounds),
+                    "pixel_origin": [0, 0],
+                    "crs": crs.to_string(),
+                })
+                return
 
             step = self.tile_size - self.overlap
 

@@ -1,3 +1,23 @@
+# Data explorations 
+
+Viewing the annotations laid over the tiff
+```
+$ python3 ./hack/shp_on_tiff.py --tiff /home/desinotorious/rtmp/data/shola/data/Master_Labelled/Hossur\ Geratti\ 1/Hossur_Geratti_1.tiff --shp /home/desinotorious/rtmp/data/shola/data/Labels_Polygons_All.sh
+```
+To see if these annotations intersect with a tile in the final coco annotation run 
+```
+$ python3 ./hack/tiles_on_tiff.py --tiff ~/rtmp/data/shola/data/Master_Labelled/Hossur\ Geratti\ 1/Hossur_Geratti_1.tiff --tile_metadata ./data/tiles/tiles_metadata.json --output output.png --shp ~/rtmp/data/shola/data/Labels_Polygons_All.shp 
+```
+To draw the coco annotations on the png 
+```
+$ python3 ./hack/coco_on_png.py --png ./data/train/images/Hossur_Geratti_1.png --coco ./data/train/annotations.json
+```
+Finding class name distributions: Change the path in the shp variable in the `type_name_combos.py` script and run 
+```
+$ python3 ./hack/type_name_combos.py
+```
+
+
 ## Data Partitioning 
 
 * Data partitioning happens in many stages, but essentially 2 major
@@ -87,12 +107,6 @@ Current situation
 
 So we don't normalize 
 
-## Finding class distributions 
-
-Change the path in the shp variable in the `type_name_combos.py` script and run 
-```
-$ python3 ./hack/type_name_combos.py
-```
 
 
 

@@ -1,5 +1,5 @@
 {
     "skip_validation": false,
-    "skip_tiling": true,
+    "skip_tiling": false,
     "skip_annotation": false
 }

@@ -56,10 +56,14 @@ def main():
     parser.add_argument("--test_split", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for train/val split")
+    parser.add_argument("--focus_label", type=str, default="Lantana Cover",
+                        help="Only process annotations for this specific label")
     parser.add_argument("--log_level", type=str, default="INFO",
                         choices=["INFO", "DEBUG",
                                  "WARNING", "ERROR", "CRITICAL"],
                         help="Logging level")
+    parser.add_argument("--no_tile", action="store_true", default=False,
+                        help="If True, preserves each TIFF as a single PNG without tiling")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
 
@@ -101,7 +105,8 @@ def main():
             args.tile_output_dir,
             args.tile_size,
             args.overlap,
-            args.skip_threshold
+            args.skip_threshold,
+            args.no_tile
         )
         tile_metadata_path = tile_generator.generate_tiles()
         logging.debug(f"Tile metadata saved to: {tile_metadata_path}")
@@ -122,7 +127,9 @@ def main():
             args.test_dir,
             args.val_split,
             args.test_split,
-            seed=args.seed
+            seed=args.seed,
+            focus_label=args.focus_label,
+            no_tile=args.no_tile
         )
         builder.run()
         logging.info("Image and annotations written to:")

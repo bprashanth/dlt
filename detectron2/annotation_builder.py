@@ -36,14 +36,16 @@ import json
 import shutil
 from shapely.geometry import box
 import geopandas as gpd
-import rasterio
+from shapely.affinity import affine_transform
 from rasterio.transform import Affine
-from rasterio import warp
+from shapely import affinity as shapely_affinity
+
 from tqdm import tqdm
 import random
 import logging
 from PIL import Image
 from geometry import GeometryValidator
+import PIL
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
@@ -60,7 +62,9 @@ class AnnotationBuilder:
             test_dir=None,
             val_split=0.2,
             test_split=0.1,
-            seed=42
+            seed=42,
+            focus_label=None,
+            no_tile=False
     ):
         try:
             self.shapefile = discovery_results['shapefile']
@@ -72,28 +76,49 @@ class AnnotationBuilder:
 
         self.tile_dir = tile_output_dir
         self.metadata_path = tile_metadata_path
+        self.focus_label = focus_label
+        self.no_tile = no_tile
+
+        # HACK: This is only for debugging, and is only used when no_tile=True.
+        if no_tile:
+            self.file_name_hack = "Hossur_Geratti_1.png"
 
         self.split_manager = SplitManager(
             train_dir, val_dir, test_dir, val_split, test_split, seed)
 
     def _get_tile_size(self, tile_path):
-        """Read image diemnsions and verify it's a square.
+        """Read image dimensions.
 
         @param tile_path: path to the tile image. 
 
-        @returns int: the width/height of the tile.
+        @returns tuple: the (width, height) of the tile.
 
-        @raises ValueError: if the image isn't square or can't be opened. 
+        @raises ValueError: if the image can't be opened or if it's not square (when no_tile=False)
         """
         try:
             with Image.open(tile_path) as img:
                 width, height = img.size
-                if width != height:
+                if not self.no_tile and width != height:
                     raise ValueError(
                         f"Tile {tile_path} is not square: {width}x{height}")
-                return width
+                return width, height
         except Exception as e:
             raise ValueError(f"Error opening tile {tile_path}: {e}")
+
+    def should_process_file(self, filename):
+        """Determine if a file should be processed based on no_tile and file_name_hack settings.
+
+        @param filename: The name of the file to check
+        @returns bool: True if the file should be processed, False otherwise
+        """
+        if self.no_tile and self.file_name_hack:
+            if (filename == self.file_name_hack):
+                logger.info(f"Processing file: {filename}")
+                return True
+            else:
+                logger.info(f"Skipping file: {filename}")
+                return False
+        return True
 
     def run(self):
         """Build annotations and save to disk.
@@ -101,20 +126,26 @@ class AnnotationBuilder:
         @raises ValueError: if the tile metadata is corrupted. 
         @raises ValueError: if a class is not found in the class map. 
         @raises ValueError: if a class ID in the shapefile does not match the class map. 
+        @raises ValueError: if a transformed annotation is out of bounds of the tile. 
         """
         with open(self.metadata_path) as f:
             tile_metadata = json.load(f)
 
         gdf = gpd.read_file(self.shapefile)
-
-        # Fix geometries
         gdf = GeometryValidator(gdf).fix(strict_fix=True)
 
         image_id = 0
         annotation_id = 0
 
-        train_tiles, val_tiles, test_tiles = self.split_manager.split_tiles(
-            tile_metadata)
+        # Filter metadata before splitting
+        # HACK: remove
+        tile_metadata = [tile for tile in tile_metadata
+                         if self.should_process_file(tile["filename"])]
+
+        if not tile_metadata:
+            raise ValueError("No files to process after filtering")
+
+        self.split_manager.split_tiles(tile_metadata)
 
         # Each row in tile metadata:
         # {
@@ -174,18 +205,27 @@ class AnnotationBuilder:
             else:
                 gdf_proj = gdf
 
+            #
+            # Now the CRS is Geotiff (i.e. EPSG:32643)
+            #
+
             # Note that this returns all polygons that intersect with the tile.
             # No clipping is done. "Intersects" returns true if the polygons
             # overlap, and so gdf_proj[intersects] returns all touching polygons
             # without clipping.
             intersecting = gdf_proj[gdf_proj.intersects(tile_polygon)]
+            # Filter for only focus_label (eg: "Lantana Cover") polygons
+            if self.focus_label:
+                intersecting = intersecting[
+                    intersecting[self.name_key] == self.focus_label]
 
-            tile_size = self._get_tile_size(tile_path)
+            # Get tile dimensions - now returns a tuple
+            width, height = self._get_tile_size(tile_path)
             image_entry = {
                 "id": image_id,
                 "file_name": f"images/{img_filename}",
-                "width": tile_size,
-                "height": tile_size
+                "width": width,
+                "height": height
             }
 
             # This list collects all annotations for this image
@@ -197,7 +237,7 @@ class AnnotationBuilder:
                 if not row.geometry.is_valid:
                     fixed_geom = GeometryValidator.fix_invalid_geometry(
                         row.geometry)
-                    if fixed_geom is None:
+                    if not fixed_geom:
                         logger.warning(
                             f"Skipping invalid geometry in tile processing")
                         continue
@@ -240,47 +280,60 @@ class AnnotationBuilder:
                 # 2. Scaling: scale the polygon to the tile's size
                 # 3. Intersection: compute the clipped polygon pixel coords
                 # relative to this new origin.
-                transform = Affine.translation(*bounds[:2]) * Affine.scale(
-                    (bounds[2] - bounds[0]) / tile_size,
-                    (bounds[3] - bounds[1]) / tile_size
+                pixel_transform = Affine.translation(bounds[0], bounds[3]) * Affine.scale(
+                    # Use width instead of tile_size
+                    (bounds[2] - bounds[0]) / width,
+                    # Use height instead of tile_size
+                    -(bounds[3] - bounds[1]) / height
                 )
-
-                try:
-                    # Convert geospatial to pixel coords
-                    transform_matrix = [transform.a, transform.b, transform.c,
-                                        transform.d, transform.e, transform.f]
-                    pixel_geom = gpd.GeoSeries.from_wkt(
-                        [clipped.wkt]).affine_transform(transform_matrix)[0]
-                except Exception as e:
-                    logger.error(f"Error transforming geometry: {e}")
-                    continue
+                inv_transform = ~pixel_transform
+                pixel_geom = shapely_affinity.affine_transform(clipped, [
+                    inv_transform.a,  # a
+                    inv_transform.b,  # b
+                    inv_transform.d,  # d
+                    inv_transform.e,  # e
+                    inv_transform.c,  # xoff
+                    inv_transform.f   # yoff
+                ])
 
                 # Basic polygon check
                 if not pixel_geom or pixel_geom.is_empty:
                     continue
 
-                x, y, w, h = box(*clipped.bounds).bounds
+                x, y, max_x, max_y = pixel_geom.bounds
+                w = max_x - x
+                h = max_y - y
+                logger.debug(f"Pixel-space bbox: {x}, {y}, {w}, {h}")
 
                 # Handle both Polygon and MultiPolygon cases
-                if clipped.geom_type == 'MultiPolygon':
-                    # For MultiPolygon, get coordinates from all polygons
-                    segmentation = []
-                    for polygon in clipped.geoms:
-                        segmentation.extend(
-                            list(sum(polygon.exterior.coords, ())))
+                segmentation = []
+                if pixel_geom.geom_type == 'MultiPolygon':
+                    segmentation = [
+                        [coord for pt in poly.exterior.coords for coord in pt]
+                        for poly in pixel_geom.geoms
+                    ]
                 else:
-                    # For single Polygon
-                    segmentation = list(sum(clipped.exterior.coords, ()))
+                    segmentation = [
+                        [coord for pt in pixel_geom.exterior.coords for coord in pt]]
 
                 ann = {
                     "id": annotation_id,
                     "image_id": image_id,
                     "category_id": cat_id,
-                    "bbox": [x, y, w-x, h-y],
+                    "bbox": [x, y, w, h],
                     "bbox_mode": 1,  # XYWH_ABS
                     "segmentation": [segmentation],
                     "iscrowd": 0
                 }
+
+                # The transformed polygon should be within the tile bounds
+                if not (0 <= x <= width and 0 <= y <= height and
+                        0 <= x + w <= width and 0 <= y + h <= height):
+                    raise ValueError(
+                        f"Invalid annotation bounds for tile {img_filename}: "
+                        f"bbox ({x}, {y}, {w}, {h}) is out of {width}x{height} bounds"
+                    )
+
                 tile_annotations.append(ann)
                 annotation_id += 1
 
