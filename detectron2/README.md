@@ -13,8 +13,9 @@ Drone Lantana Detectors based on Detectron2
 
 - Steps 1-4: Discovery, validation, tiling and COCO annotation transformation
 
+To prep data with a 70/20/10 split and 2048x2048 pixel tiles, only over the "Lantana Cover" class
 ```
-$ python main.py --root_dir ... --tile_output_dir ... --train_dir ... --val_dir ...
+$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --log_level INFO --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --focus_label "Lantana Cover"
 ```
 
 - Step 5: Train
