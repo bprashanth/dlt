@@ -8,8 +8,11 @@ Returns:
     "tiff_files": [list of paths to tiff files in root dir],
     "shapefile": path to shapefile in root dir,
     "class_map": {class name: class id},
-    "name_key": [name of the key in the shapefile that contains the class names]
+    "name_key": name of the key in the shapefile that contains the class names,
+    "id_key": name of the key in the shapefile that contains the class ids
 }
+
+The class map returned is COCO compatible, meaning the indices start at 1. 
 """
 
 import os
@@ -40,7 +43,7 @@ class DataDiscovery:
         self.shapefile = self._discover_shapefile()
         self.name_key = name_key
         self.id_key = id_key
-        self.classes = self._discover_classes()
+        self.class_map = self._discover_classes()
 
     def _discover_tiffs(self):
         """Recursively find all site .tiff files under root_dir.
