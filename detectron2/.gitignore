@@ -166,6 +166,7 @@ cython_debug/
 
 # checkpoints from model training are typically too bulky for git 
 output/
+checkpoints/
 
 # selectively ignore most of the data directory 
 # Ignore all files within the test, train, and val directories

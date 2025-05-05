@@ -7,8 +7,10 @@ $ python3 main.py --root_dir ~/rtmp/data/shola/data/ --log_level INFO --tile_out
 $ python3 ./hack/shp_on_tiff.py --shp path/to/shp --tiff path/to/tiff
 
 $ python3 ./hack/coco_on_png.py --png ./data/train/images/Hossur_Geratti_1.png --coco ./data/train/annotations.json
+
+$ python3 ./hack/tiles_on_tiff.py --tiff ~/rtmp/data/shola/data/Master_Labelled/Hossur\ Geratti\ 1/Hossur_Geratti_1.tiff --tile_metadata ./data/tiles/tiles_metadata.json --output output.png --shp ~/rtmp/data/shola/data/Labels_Polygons_All.shp
 ```
-And compare the two images 
+And compare all these images 
 
 Available options are (run `hack/type_name_combos.py` to find)
 ```
@@ -25,6 +27,41 @@ Unique Types-Name combinations:
      8     Coconut Tree
      9            House
 ```
+
+## Skippping stages in the pipeline 
+
+To skip stages of the pipeline, modify `pipeline_config.json`
+```
+{
+    "skip_validation": false,
+    "skip_tiling": false,
+    "skip_annotation": false
+}
+
+```
+
+To only generate labels for 1 class 
+```
+$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --log_level INFO --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --focus_label "Lantana Cover"
+```
+
+## Errors in annotation 
+
+During model training if you see a very low number of classes in something you know to be present in the annotations, most likely you have messed up the coco format. 
+Eg, if you know there is a distribution of labels but the category map shows something like this during model training 
+```console 
+2025-05-05 11:14:10,459 - detectron2.data.build - INFO - Distribution of instances among all 10 categories:
+|   category   | #instances   |   category    | #instances   |   category   | #instances   |
+|:------------:|:-------------|:-------------:|:-------------|:------------:|:-------------|
+|  Open Space  | 0            |     Senna     | 0            |    Bamboo    | 0            |
+| Water Bodies | 0            | Lantana Cover | 1443         |    Trees     | 0            |
+| Chromolaena  | 0            | Agriculture.. | 0            | Coconut Tree | 0            |
+|    House     | 0            |               |              |              |              |
+|    total     | 1443         |               |              |              |              |
+
+```
+
+## Data Frame debugging 
 
 To debug the data frame in python
 ```
@@ -62,17 +99,4 @@ Name: geometry, dtype: geometry
 ...
 >>> coords[1]
 ```
-To skip stages of the pipeline, modify `pipeline_config.json`
-```
-{
-    "skip_validation": false,
-    "skip_tiling": false,
-    "skip_annotation": false
-}
 
-```
-
-To only generate labels for 1 class 
-```
-$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --log_level INFO --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --focus_label "Lantana Cover"
-```

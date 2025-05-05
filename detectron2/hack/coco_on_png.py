@@ -55,9 +55,6 @@ def draw_coco_annotations(image_path, coco_path, output_path="coco_overlay.png")
         for seg in ann['segmentation']:
             print(
                 f"Segmentation length: {len(seg)}, first few coords: {seg[:10]}")
-            # Handle nested list structure
-            if isinstance(seg[0], list):
-                seg = seg[0]  # Take the first (and usually only) sublist
 
             if not isinstance(seg, list) or len(seg) < 6:
                 continue  # Skip invalid segments

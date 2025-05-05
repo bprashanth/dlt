@@ -3,6 +3,8 @@
 import argparse
 import logging
 import json
+import docker
+import os
 from validation import DataValidator
 from discovery import DataDiscovery
 from tile_generator import TileGenerator
@@ -25,6 +27,41 @@ def setup_logger(log_level=logging.INFO):
     # Configure root logger
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level)
+
+
+def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, log_level):
+    client = docker.from_env()
+
+    # TODO(prashanth@): There is a big assumption here around the working
+    # directory being /app.
+    container = client.containers.run(
+        image=training_image,
+        command=[
+            "python",
+            "/app/trainer.py",
+            "--train_dir", train_dir,
+            "--val_dir", val_dir,
+            "--output_dir", output_dir,
+            "--log_level", log_level
+        ],
+        volumes={
+            os.path.abspath("."): {"bind": "/app", "mode": "rw"}
+        },
+        working_dir="/app",
+        network_mode="host",
+        detach=True,
+        stdout=True,
+        stderr=True,
+        remove=True
+    )
+
+    logging.info(f"Training container launched with ID: {container.id}")
+    for line in container.logs(stream=True):
+        # We break log handling here. The container is logging using a logger
+        # and the log level is passed down, but if custom handling of logs is
+        # setup in this program print might by pass that.
+        print(line.decode().strip())
+    logging.info("Training completed")
 
 
 def main():
@@ -64,6 +101,10 @@ def main():
                         help="Logging level")
     parser.add_argument("--no_tile", action="store_true", default=False,
                         help="If True, preserves each TIFF as a single PNG without tiling")
+    parser.add_argument("--training_image", type=str, default="detectron2:0.1",
+                        help="Docker image to use for training")
+    parser.add_argument("--checkpoint_output_dir", type=str, required=True,
+                        help="Where to save checkpoints")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
 
@@ -139,6 +180,18 @@ def main():
             logging.info(f"Test: {args.test_dir}")
     else:
         logging.info("Step 4: Annotation Builder (Skipped)")
+
+    if not pipeline_config.get('skip_training', False):
+        logging.info("Step 5: Training")
+        launch_training_in_docker(
+            args.train_dir,
+            args.val_dir,
+            args.checkpoint_output_dir,
+            args.training_image,
+            args.log_level
+        )
+    else:
+        logging.info("Step 5: Training (Skipped)")
 
 
 if __name__ == "__main__":

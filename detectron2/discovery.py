@@ -112,16 +112,6 @@ class DataDiscovery:
                 raise ValueError(
                     f"Invalid ID type for class {name}: {type(id_val)}. Must be integer.")
 
-        # Adjust IDs to start at 1 for COCO compatibility
-        min_id = min(class_map.values())
-        adjustment = 1 - min_id if min_id < 1 else 0
-
-        if adjustment != 0:
-            logger.info(
-                f"Adjusting class IDs by +{adjustment} to ensure COCO compatibility (ids start at 1)")
-            class_map = {name: id_val + adjustment for name,
-                         id_val in class_map.items()}
-
         return class_map
 
     def get_discovery_results(self):
