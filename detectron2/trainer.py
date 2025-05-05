@@ -29,7 +29,8 @@ def setup_logger(log_level=logging.INFO):
 
 
 class Trainer:
-    def __init__(self, train_dir, val_dir, output_dir, logger=None):
+    def __init__(
+            self, train_dir, val_dir, output_dir, focus_label=None, logger=None):
         self.train_dir = train_dir
         self.val_dir = val_dir
         self.output_dir = output_dir
@@ -41,8 +42,10 @@ class Trainer:
         self.train_coco_path = os.path.join(self.train_dir, "annotations.json")
         self.val_coco_path = os.path.join(self.val_dir, "annotations.json")
 
-        self.train_coco = CocoHelper(self.train_coco_path)
-        self.val_coco = CocoHelper(self.val_coco_path)
+        self.train_coco = CocoHelper(
+            self.train_coco_path, focus_label=focus_label)
+        self.val_coco = CocoHelper(
+            self.val_coco_path, focus_label=focus_label)
 
     def _register_datasets(self):
 
@@ -110,6 +113,8 @@ def main():
                         default="output", help="Path for model output")
     parser.add_argument("--log_level", type=str, default="INFO",
                         choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"])
+    parser.add_argument("--focus_label", type=str, default="Lantana camara",
+                        help="Field to focus on for validation")
     args = parser.parse_args()
 
     setup_logger(getattr(logging, args.log_level.upper()))
@@ -121,7 +126,8 @@ def main():
         log_level: {args.log_level}\n\
     ")
 
-    trainer = Trainer(args.train_dir, args.val_dir, args.output_dir)
+    trainer = Trainer(args.train_dir, args.val_dir,
+                      args.output_dir, args.focus_label)
     checkpoint_path = trainer.train()
     logging.info(f"Training completed and model saved to {checkpoint_path}")
 

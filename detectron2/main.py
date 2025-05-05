@@ -29,7 +29,7 @@ def setup_logger(log_level=logging.INFO):
     root_logger.setLevel(log_level)
 
 
-def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, log_level):
+def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, focus_label, log_level):
     client = docker.from_env()
 
     # TODO(prashanth@): There is a big assumption here around the working
@@ -42,6 +42,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, lo
             "--train_dir", train_dir,
             "--val_dir", val_dir,
             "--output_dir", output_dir,
+            "--focus_label", focus_label,
             "--log_level", log_level
         ],
         volumes={
@@ -188,6 +189,7 @@ def main():
             args.val_dir,
             args.checkpoint_output_dir,
             args.training_image,
+            args.focus_label,
             args.log_level
         )
     else:
