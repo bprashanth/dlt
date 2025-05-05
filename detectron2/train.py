@@ -1,3 +1,7 @@
+"""Train a Detectron2 model.
+
+THIS FILE IS DEPRECATED. SEE trainer.py FOR THE NEW IMPLEMENTATION.
+"""
 import argparse
 import logging
 import os

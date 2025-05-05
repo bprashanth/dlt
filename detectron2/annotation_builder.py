@@ -257,13 +257,6 @@ class AnnotationBuilder:
                 if cat_id is None:
                     raise ValueError(f"Class {label} not found in class map")
 
-                # TODO(prashanth@): this is a sanity check. We should remove
-                # this once we have a proper class map. It is a hack to flag
-                # offset errors in this specific dataset.
-                if row[self.type_key] + 1 != cat_id:
-                    raise ValueError(
-                        f"Class {label} has ID {row[self.type_key]} but class map has ID {cat_id}")
-
                 # Convert geospatial to pixel coords
                 # Tile bounds: [801927.0155835557, 1361264.4502956227..]
                 # Pixel bounds: [0, 0, 512, 512] ->> this doesn't matter here
@@ -306,6 +299,10 @@ class AnnotationBuilder:
                 logger.debug(f"Pixel-space bbox: {x}, {y}, {w}, {h}")
 
                 # Handle both Polygon and MultiPolygon cases
+                # COCO format expects segmentation to be a list of lists:
+                # List[List[float]]
+                # For polygons, it's: [ [...x, y, x, y...] ]
+                # For multipolygons, it's: [ [...], [...] ]
                 segmentation = []
                 if pixel_geom.geom_type == 'MultiPolygon':
                     segmentation = [
@@ -314,7 +311,9 @@ class AnnotationBuilder:
                     ]
                 else:
                     segmentation = [
-                        [coord for pt in pixel_geom.exterior.coords for coord in pt]]
+                        [coord for pt in pixel_geom.exterior.coords
+                         for coord in pt]
+                    ]
 
                 ann = {
                     "id": annotation_id,
@@ -322,7 +321,7 @@ class AnnotationBuilder:
                     "category_id": cat_id,
                     "bbox": [x, y, w, h],
                     "bbox_mode": 1,  # XYWH_ABS
-                    "segmentation": [segmentation],
+                    "segmentation": segmentation,
                     "iscrowd": 0
                 }
 
@@ -346,8 +345,8 @@ class AnnotationBuilder:
             image_id += 1
 
         # Batch write all images and annotations to disk
-        categories = [{"id": i+1, "name": name}
-                      for name, i in self.class_map.items()]
+        categories = [{"id": id_val, "name": name}
+                      for name, id_val in self.class_map.items()]
         self.split_manager.write(self.tile_dir, categories)
 
 

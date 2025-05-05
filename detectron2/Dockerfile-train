@@ -1,4 +1,4 @@
-# Dockerfile for SAM + CLIP
+# Dockerfile only works with train.py
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -47,10 +47,10 @@ COPY . /app
 
 WORKDIR /app
 
-RUN chmod +x trainer.py
+RUN chmod +x train.py
 
 # ENTRYPOINT ["python"]
-CMD ["python", "trainer.py"]
+CMD ["python", "train.py"]
 
 # Start Jupyter Notebook server
 # CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--allow-root", "--NotebookApp.token=''"]
