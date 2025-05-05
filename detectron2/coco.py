@@ -198,3 +198,9 @@ class CocoHelper:
 
     def get_num_classes(self):
         return len(self.class_names)
+
+    def get_num_images(self):
+        return len(self.data['images'])
+
+    def get_num_annotations(self):
+        return len(self.data['annotations'])
