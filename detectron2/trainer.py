@@ -77,7 +77,16 @@ class Trainer:
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.train_coco.get_num_classes()
         cfg.SOLVER.IMS_PER_BATCH = 2
         cfg.SOLVER.BASE_LR = 0.00025
-        cfg.SOLVER.MAX_ITER = 1000
+
+        # Desired epochs chosen artibrarily from literature
+        desired_epochs = 50
+        cfg.SOLVER.MAX_ITER = desired_epochs * (
+            self.train_coco.get_num_images() // cfg.SOLVER.IMS_PER_BATCH
+        )
+
+        # Tune this based on the loss curve, right now we're assuming that 200
+        # ish images is a "small" enough dataset that the decay won't make a
+        # huge difference
         cfg.SOLVER.STEPS = []
         cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
