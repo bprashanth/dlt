@@ -2,7 +2,7 @@
 
 * Viewing the annotations laid over the tiff
 ```
-$ python3 ./hack/shp_on_tiff.py --tiff /home/desinotorious/rtmp/data/shola/data/Master_Labelled/Hossur\ Geratti\ 1/Hossur_Geratti_1.tiff --shp /home/desinotorious/rtmp/data/shola/data/Labels_Polygons_All.sh
+$ python3 ./hack/shp_on_tiff.py --tiff /home/desinotorious/rtmp/data/shola/data/Master_Labelled/Hossur\ Geratti\ 1/Hossur_Geratti_1.tiff --shp /home/desinotorious/rtmp/data/shola/data/Labels_Polygons_All.shp
 ```
 * To see if these annotations intersect with a tile in the final coco annotation run 
 ```

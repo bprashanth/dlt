@@ -35,10 +35,10 @@ def setup_logger(log_level=logging.INFO):
 
 
 
-def validate_coco_file(coco_path):
+def validate_coco_file(coco_path, focus_label=None):
     try:
         # This will automatically validate the file when loading
-        coco_helper = CocoHelper(coco_path)
+        coco_helper = CocoHelper(coco_path, focus_label=focus_label)
 
         # Print some statistics
         logging.info(f"Validation successful!")
@@ -60,12 +60,14 @@ def main():
                         help="Path to COCO annotation JSON file")
     parser.add_argument("--log_level", type=str, default="INFO",
                         choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"])
+    parser.add_argument("--focus_field", type=str, default="Lantana camara",
+                        help="Field to focus on for validation")
     args = parser.parse_args()
 
     setup_logger(getattr(logging, args.log_level.upper()))
 
     logging.info(f"Validating COCO file: {args.coco}")
-    success = validate_coco_file(args.coco)
+    success = validate_coco_file(args.coco, args.focus_field)
 
     if not success:
         sys.exit(1)
