@@ -122,8 +122,8 @@ def main():
                         default="output", help="Path for model output")
     parser.add_argument("--log_level", type=str, default="INFO",
                         choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"])
-    parser.add_argument("--focus_label", type=str, default="Lantana camara",
-                        help="Field to focus on for validation")
+    parser.add_argument("--focus_label", type=str, default=None,
+                        help="Field to focus on for validation, eg 'Lantana camara'")
     args = parser.parse_args()
 
     setup_logger(getattr(logging, args.log_level.upper()))

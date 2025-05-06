@@ -65,6 +65,34 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir):
+    client = docker.from_env()
+
+    cmd = [
+        "python", "inference_runner.py",
+        "--weights_path", weights_path,
+        "--test_image", test_image,
+        "--output_dir", output_dir,
+        "--test_dir", test_dir
+    ]
+
+    container = client.containers.run(
+        image=image_name,
+        command=cmd,
+        volumes={os.getcwd(): {"bind": "/app", "mode": "rw"}},
+        network_mode="host",
+        working_dir="/app",
+        detach=True,
+        stdout=True,
+        stderr=True,
+    )
+
+    logging.info(f"Training container launched with ID: {container.id}")
+    for line in container.logs(stream=True):
+        print(line.decode().strip())
+    logging.info("Inference completed")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Validate new datasets before copying them into app/data")
@@ -94,18 +122,26 @@ def main():
     parser.add_argument("--test_split", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for train/val split")
-    parser.add_argument("--focus_label", type=str, default="Lantana Cover",
-                        help="Only process annotations for this specific label")
+    parser.add_argument("--focus_label", type=str, default=None,
+                        help="Only process annotations for this specific label, eg 'Lantana Cover'")
     parser.add_argument("--log_level", type=str, default="INFO",
                         choices=["INFO", "DEBUG",
                                  "WARNING", "ERROR", "CRITICAL"],
                         help="Logging level")
     parser.add_argument("--no_tile", action="store_true", default=False,
                         help="If True, preserves each TIFF as a single PNG without tiling")
-    parser.add_argument("--training_image", type=str, default="detectron2:0.1",
+    parser.add_argument("--training_image", type=str, default="detectron2:1.0",
                         help="Docker image to use for training")
     parser.add_argument("--checkpoint_output_dir", type=str, required=True,
                         help="Where to save checkpoints")
+    parser.add_argument("--inference_image", type=str, default="detectron2:1.0",
+                        help="Docker image to use for inference")
+    parser.add_argument("--inference_weights_path", type=str,
+                        help="Path to the weights file to use for inference")
+    parser.add_argument("--inference_test_image", type=str,
+                        help="Path to the test image to use for inference")
+    parser.add_argument("--inference_output_dir", type=str,
+                        help="Path to the output directory for inference")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
 
@@ -194,6 +230,18 @@ def main():
         )
     else:
         logging.info("Step 5: Training (Skipped)")
+
+    if not pipeline_config.get('skip_inference', False):
+        logging.info("Step 6: Inference")
+        launch_inference_in_docker(
+            args.inference_weights_path,
+            args.inference_test_image,
+            args.inference_output_dir,
+            args.inference_image,
+            args.test_dir
+        )
+    else:
+        logging.info("Step 6: Inference (Skipped)")
 
 
 if __name__ == "__main__":

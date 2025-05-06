@@ -4,34 +4,125 @@ Drone Lantana Detectors based on Detectron2
 
 ## Quickstart
 
-- Discovery: discover the site tiff files and the main shp file
-- Validation: validate the polygons intersect between the tiffs and the shp file
-- Tiling: split up the tiff into tiled 'pngs'
-- Annotation Transformation: intersect the bounds of each tile with the main shp file and generate COCO annotations, clipping polygons where necessary
-- Training: fine-tune detectron2 on the COCO annotations
-- Infernce: run inference on new images
+```console 
+     1. Discovery 
+	| - "discover" all files of interest. What to ignore. What to train on.
+	| - Format into internal data structure for consistency. 
+	|
+     2. Validation
+	| - Are the polygons in the shp file intersecting the geotiffs?
+	| - Are there Null or corrupt polygons, are the fixable? 
+	| - Are the CRS' and datums compatible?
+	|
+     3. TileGenerator
+	| - Chunk geotiff into w=(512-2048), h=(512-2048) squares 
+	| - Apply sliding window 
+	| - Handle edge effects
+	| - Write out intermediate tile_metadata.json with tile boundaries 
+	|
+     4. Pre-processing 
+	| ??? (normalize, data augmentation etc) 
+	| 
+     5. AnnotationBuilder
+	| - Intersect shp polygons with tile boundaries 
+	| - Clip where necessary 
+	| - Translate to pixel coordinates 
+	| - Write in coco format 
+	| - Compute and manage reproducible splits 
+	|
+     6. Manual verification
+	| - Plot coco on base tiles 
+	| - Plot shp annotations on tiff
+	| - Visually sanity check differences 
+	| 
+     7. Training (docker/remote server) 
+	| - Validate coco json, are the classes and indices aligned, are there malformed annotations etc
+	| - Register datasets with model
+	| - Train model to output checkpoints
+	| 
+     8. InferenceRunner (docker/remote server)
+	| - Load metadata from coco 
+	| - Load weights from training 
+	| - Predict polygons 
+	| - Draw polygons on input image and write output png 
+	| - Write prediction coco 
+	|
+     9. Test scoring 
+	| - Compare test coco w/ prediction coco for test scores 
+	| - IOU: GT (test annotations) 
+	|	 TP (predicted polygon matches GT > threshold + correct class) 
+	|        FP (predicted polygon doesn't overlap GT)
+	|        FN (a GT polygon with no matching prediction)
+	| - Diminishing returns: how much data do we need? 
+	| 	Loss curves
+	| 	Ablation
+	|
+     10. Post-processing
+	| - Per (site, category, tile) metrics 
+	| ??? (stitch tiles, generate histograms/heatmaps)
+```
 
 - Steps 1-4: Discovery, validation, tiling and COCO annotation transformation
 
+Set `--pipeline_config` to 
+```json
+{
+    "skip_validation": false,
+    "skip_tiling": false,
+    "skip_annotation": false,
+    "skip_training": true,
+    "skip_inference": true
+}
+```
 To prep data with a 70/20/10 split and 2048x2048 pixel tiles, only over the "Lantana Cover" class
 ```
 $ python3 main.py --root_dir ~/rtmp/data/shola/data/ --log_level INFO --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --focus_label "Lantana Cover"
 ```
 
+Or, just remove `--focus_label` to train with all known classes. 
+Make sure you visually inspect the annotations are correct before moving to the next stage (see [this](docs/data.md) for instructions).
+
 - Step 5: Train
 
+Set `pipeline_config` to
+```json
+{
+    "skip_validation": true,
+    "skip_tiling": true,
+    "skip_annotation": true,
+    "skip_training": false,
+    "skip_inference": true
+}
 ```
-docker run -d --rm --net host -v $(pwd):/app detectron2:0.1
+Then run
+```
+$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --checkpoint_output_dir ./checkpoints/all --training_image detectron2:1.0 --log_level INFO
 ```
 
 - Step 6: Inference
 
+Set `pipeline_config` to
+```json
+{
+    "skip_validation": true,
+    "skip_tiling": true,
+    "skip_annotation": true,
+    "skip_training": true,
+    "skip_inference": false
+}
 ```
-docker run -it --rm --net host -v $(pwd):/app --entrypoint /bin/bash detectron2:0.1
-$ python ./main.py --train_data "" --inference_data ./data/val/ --weights_path ./output/checkpoints/output/model_final.pth
+Then run - but ensure you open the script and confirm the path to the weigths match the last trained checkpoint 
 ```
+# Open the script and see if the settings are right 
+# Specifically, make sure you set the right flags in pipeline_config.json 
+$ ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference
+```
+This will generate 2 images in `./inference`
+1. The base png + predictions 
+2. The base png + annotations taken from `--test_dir`/annotations.json
 
-## Data Processing
+
+## Data "Discovery" 
 
 The scripts in this directory will help assess and reformat datasets.
 

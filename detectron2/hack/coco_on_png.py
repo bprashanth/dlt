@@ -46,11 +46,13 @@ def draw_coco_annotations(image_path, coco_path, output_path="coco_overlay.png")
     ax.imshow(np.asarray(image))
     ax.set_title(f"COCO Annotations for {filename}")
 
-    print("Added test shapes")
+    # Track which categories are actually present in the image
+    categories_present = set()
 
     for ann in annotations:
         cat_id = ann['category_id']
         color = category_colors.get(cat_id, 'red')
+        categories_present.add(cat_id)
 
         for seg in ann['segmentation']:
             print(
@@ -71,11 +73,11 @@ def draw_coco_annotations(image_path, coco_path, output_path="coco_overlay.png")
             poly_patch = patches.Polygon(
                 polygon,
                 closed=True,
-                edgecolor='red',  # Changed to bright red
+                edgecolor=color,  # Changed from 'red' to use category color
                 fill=True,
-                facecolor=color,  # Use original color for fill
+                facecolor=color,
                 alpha=0.3,
-                linewidth=3  # Increased line width
+                linewidth=3
             )
             ax.add_patch(poly_patch)
 
@@ -84,9 +86,9 @@ def draw_coco_annotations(image_path, coco_path, output_path="coco_overlay.png")
             if bbox:
                 print(f"Polygon bbox: {bbox}")
 
-    # Show legend
-    handles = [patches.Patch(color=category_colors[cid], label=name)
-               for cid, name in categories.items()]
+    # Show legend only for categories present in the image
+    handles = [patches.Patch(color=category_colors[cid], label=categories[cid])
+               for cid in categories_present]
     ax.legend(handles=handles)
 
     plt.axis('off')
