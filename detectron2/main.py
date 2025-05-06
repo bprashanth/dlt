@@ -43,6 +43,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
             "--val_dir", val_dir,
             "--output_dir", output_dir,
             "--focus_label", focus_label,
+            "--resume",
             "--log_level", log_level
         ],
         volumes={
@@ -65,7 +66,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
-def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir):
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold):
     client = docker.from_env()
 
     cmd = [
@@ -73,7 +74,8 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
         "--weights_path", weights_path,
         "--test_image", test_image,
         "--output_dir", output_dir,
-        "--test_dir", test_dir
+        "--test_dir", test_dir,
+        "--confidence_threshold", str(confidence_threshold)
     ]
 
     container = client.containers.run(
@@ -142,6 +144,9 @@ def main():
                         help="Path to the test image to use for inference")
     parser.add_argument("--inference_output_dir", type=str,
                         help="Path to the output directory for inference")
+    parser.add_argument("--inference_confidence_threshold",
+                        type=float, default=0.3,
+                        help="Confidence score threshold for predictions (default: 0.3)")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
 
@@ -238,7 +243,8 @@ def main():
             args.inference_test_image,
             args.inference_output_dir,
             args.inference_image,
-            args.test_dir
+            args.test_dir,
+            args.inference_confidence_threshold
         )
     else:
         logging.info("Step 6: Inference (Skipped)")

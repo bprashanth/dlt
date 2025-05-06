@@ -1,7 +1,7 @@
 {
-    "skip_validation": false,
-    "skip_tiling": false,
-    "skip_annotation": false,
+    "skip_validation": true,
+    "skip_tiling": true,
+    "skip_annotation": true,
     "skip_training": true,
-    "skip_inference": true
+    "skip_inference": false
 }
