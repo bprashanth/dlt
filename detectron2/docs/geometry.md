@@ -6,7 +6,7 @@ A valid geometry is one that can be plotted without errors.
 
 1. Self-intersection ("bow-tie") - A geometry that intersects itself.
 
-```
+```console
     *----*
      \  /
       \/
@@ -17,7 +17,7 @@ A valid geometry is one that can be plotted without errors.
 
 2. Ring self-intersection - when the boundary of a hole in the polygon intersects itself.
 
-```
+```console
     *--------*
     |        |
     |  *----*  |
@@ -29,7 +29,7 @@ A valid geometry is one that can be plotted without errors.
 
 3. Duplicate vertices - when a polygon has the same vertex more than once.
 
-```
+```console 
     *----*
     |    |
     |    |
