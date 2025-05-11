@@ -95,14 +95,25 @@ class Trainer:
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(
             "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"
         )
+
+        # Save a checkpoint every N iterations
+        cfg.SOLVER.CHECKPOINT_PERIOD = (
+            self.train_coco.get_num_images() // cfg.SOLVER.IMS_PER_BATCH
+        )  # Save once per epoch
+
+        # Maximum number of checkpoints to keep
+        cfg.SOLVER.MAX_TO_KEEP = 5  # Keeps last 5 checkpoints
+
         return cfg
 
-    def train(self):
+    def train(self, resume=False):
         self._register_datasets()
         cfg = self._get_config()
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         trainer = DefaultTrainer(cfg)
-        trainer.resume_or_load(resume=False)
+        if resume:
+            logging.info("Resuming training from last checkpoint")
+        trainer.resume_or_load(resume=resume)
         trainer.train()
 
         checkpointer = DetectionCheckpointer(trainer.model)
@@ -124,6 +135,8 @@ def main():
                         choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"])
     parser.add_argument("--focus_label", type=str, default=None,
                         help="Field to focus on for validation, eg 'Lantana camara'")
+    parser.add_argument("--resume", action="store_true", default=True,
+                        help="Resume training from the last checkpoint")
     args = parser.parse_args()
 
     setup_logger(getattr(logging, args.log_level.upper()))
@@ -137,7 +150,7 @@ def main():
 
     trainer = Trainer(args.train_dir, args.val_dir,
                       args.output_dir, args.focus_label)
-    checkpoint_path = trainer.train()
+    checkpoint_path = trainer.train(resume=args.resume)
     logging.info(f"Training completed and model saved to {checkpoint_path}")
 
 

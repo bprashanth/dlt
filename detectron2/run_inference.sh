@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Check if both arguments are provided
-if [ $# -ne 4 ]; then
-    echo "Usage: $0 -image <image_path> -output_dir <output_directory>"
+# Check if minimum required arguments are provided
+if [ $# -lt 6 ]; then
+    echo "Usage: $0 -image <image_path> -output_dir <output_directory> -weights <weights_path> [-confidence <threshold>]"
     exit 1
 fi
 
@@ -18,6 +18,14 @@ while [[ $# -gt 0 ]]; do
             OUTPUT_DIR="$2"
             shift 2
             ;;
+        -weights)
+            WEIGHTS="$2"
+            shift 2
+            ;;
+        -confidence)
+            CONFIDENCE="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
             exit 1
@@ -25,9 +33,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Set default confidence if not specified
+CONFIDENCE=${CONFIDENCE:-0.3}
+
 # Check if required arguments are set
-if [ -z "$IMAGE" ] || [ -z "$OUTPUT_DIR" ]; then
-    echo "Both -image and -output_dir must be specified"
+if [ -z "$IMAGE" ] || [ -z "$OUTPUT_DIR" ] || [ -z "$WEIGHTS" ]; then
+    echo "All arguments (-image, -output_dir, and -weights) must be specified"
     exit 1
 fi
 
@@ -47,10 +58,11 @@ python3 main.py --root_dir ~/rtmp/data/shola/data/ \
     --tile_size 2048 \
     --checkpoint_output_dir ./checkpoints/all \
     --training_image detectron2:1.0 \
-    --inference_weights_path ./checkpoints/lantana/model_final.pth \
+    --inference_weights_path "${WEIGHTS}" \
     --inference_test_image "${IMAGE}" \
     --inference_output_dir "${OUTPUT_DIR}" \
     --inference_image detectron2:1.0 \
+    --inference_confidence_threshold ${CONFIDENCE} \
     --log_level INFO
 
 python3 ./hack/coco_on_png.py --png "${IMAGE}" \
