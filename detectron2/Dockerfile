@@ -43,6 +43,7 @@ RUN pip install jupyter
 EXPOSE 8888
 
 # Copy your notebooks or scripts into the container (optional)
+# Uncomment this when the checkpoint files are removed
 COPY . /app
 
 WORKDIR /app

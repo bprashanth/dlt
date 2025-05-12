@@ -41,11 +41,26 @@ Drone Lantana Detectors based on Detectron2
 	| - Train model to output checkpoints
 	| 
      8. InferenceRunner (docker/remote server)
+	| 
+	| Batch (file) mode 
 	| - Load metadata from coco 
 	| - Load weights from training 
 	| - Predict polygons 
 	| - Draw polygons on input image and write output png 
-	| - Write prediction coco 
+	| - Write prediction coco.json 
+	|
+	| UI mode 
+	| - Start the UI server 
+	| - Wait for user to choose weights, image, confidence, classes, ground truth
+	| - Predict polygons 
+	| - Draw polygons on input image and display
+	| - If ground truth annotations specified, display for comparison
+	|
+	User chooses Gradio Mode 
+	 \--> Launch Docker --> Run Gradio server 
+          \--> User uploads image, chooses weights + threshold + classes --> InferenceRunner is invoked per image 
+	---|
+	|
 	|
      9. Test scoring 
 	| - Compare test coco w/ prediction coco for test scores 
@@ -96,7 +111,7 @@ Set `pipeline_config` to
 ```
 Then run
 ```
-$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --checkpoint_output_dir ./checkpoints/all --training_image detectron2:1.0 --log_level INFO
+$ python3 main.py --root_dir ~/rtmp/data/shola/data/ --tile_output_dir ./data/tiles --val_dir ./data/val --train_dir ./data/train --test_dir ./data/test --pipeline_config ./pipeline_config.json --tile_size 2048 --checkpoint_output_dir ./checkpoints/all --training_image detectron2:1.3 --log_level INFO
 ```
 
 - Step 6: Inference
