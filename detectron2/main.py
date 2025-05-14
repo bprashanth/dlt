@@ -66,7 +66,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
-def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold):
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode):
     client = docker.from_env()
 
     cmd = [
@@ -75,8 +75,11 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
         "--test_image", test_image,
         "--output_dir", output_dir,
         "--test_dir", test_dir,
-        "--confidence_threshold", str(confidence_threshold)
+        "--confidence_threshold", str(confidence_threshold),
     ]
+
+    if gradio_mode:
+        cmd.append("--gradio_mode")
 
     container = client.containers.run(
         image=image_name,
@@ -87,6 +90,7 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
         detach=True,
         stdout=True,
         stderr=True,
+        remove=True
     )
 
     logging.info(f"Training container launched with ID: {container.id}")
@@ -147,6 +151,9 @@ def main():
     parser.add_argument("--inference_confidence_threshold",
                         type=float, default=0.3,
                         help="Confidence score threshold for predictions (default: 0.3)")
+    parser.add_argument("--inference_gradio_mode", action="store_true",
+                        default=False,
+                        help="Run the Gradio interface instead of the command line interface.")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
 
@@ -244,7 +251,8 @@ def main():
             args.inference_output_dir,
             args.inference_image,
             args.test_dir,
-            args.inference_confidence_threshold
+            args.inference_confidence_threshold,
+            args.inference_gradio_mode
         )
     else:
         logging.info("Step 6: Inference (Skipped)")

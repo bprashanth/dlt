@@ -2,7 +2,7 @@
 
 # Check if minimum required arguments are provided
 if [ $# -lt 6 ]; then
-    echo "Usage: $0 -image <image_path> -output_dir <output_directory> -weights <weights_path> [-confidence <threshold>]"
+    echo "Usage: $0 -image <image_path> -output_dir <output_directory> -weights <weights_path> [-confidence <threshold> -gradio]"
     exit 1
 fi
 
@@ -26,6 +26,10 @@ while [[ $# -gt 0 ]]; do
             CONFIDENCE="$2"
             shift 2
             ;;
+        -gradio)
+            GRADIO_MODE="true"
+            shift 1
+            ;;
         *)
             echo "Unknown argument: $1"
             exit 1
@@ -48,6 +52,14 @@ file_name=$(basename "${IMAGE}")
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
+python3 ./hack/coco_on_png.py --png "${IMAGE}" \
+    --coco ./data/test/annotations.json \
+    --output "${OUTPUT_DIR}/${file_name}" 
+
+echo -e "\n==================================================="
+echo "Ground Truth saved to: ${OUTPUT_DIR}/${file_name}"
+echo "==================================================="
+
 # Run the inference commands
 python3 main.py --root_dir ~/rtmp/data/shola/data/ \
     --tile_output_dir ./data/tiles \
@@ -57,14 +69,11 @@ python3 main.py --root_dir ~/rtmp/data/shola/data/ \
     --pipeline_config ./pipeline_config.json \
     --tile_size 2048 \
     --checkpoint_output_dir ./checkpoints/all \
-    --training_image detectron2:1.0 \
+    --training_image detectron2:1.3 \
     --inference_weights_path "${WEIGHTS}" \
     --inference_test_image "${IMAGE}" \
     --inference_output_dir "${OUTPUT_DIR}" \
-    --inference_image detectron2:1.0 \
+    --inference_image detectron2:1.3 \
     --inference_confidence_threshold ${CONFIDENCE} \
+    ${GRADIO_MODE:+--inference_gradio_mode} \
     --log_level INFO
-
-python3 ./hack/coco_on_png.py --png "${IMAGE}" \
-    --coco ./data/test/annotations.json \
-    --output "${OUTPUT_DIR}/${file_name}" 
