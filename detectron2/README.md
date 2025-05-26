@@ -126,16 +126,23 @@ Set `pipeline_config` to
     "skip_inference": false
 }
 ```
-Then run - but ensure you open the script and confirm the path to the weigths match the last trained checkpoint 
+There are 2 modes of inference: 
+1. Batch mode 
+2. Through the UI
+
+Batch mode 
 ```
-# Open the script and see if the settings are right 
-# Specifically, make sure you set the right flags in pipeline_config.json 
-$ ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference
+$ source venv/bin/activate && ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth 
 ```
 This will generate 2 images in `./inference`
 1. The base png + predictions 
 2. The base png + annotations taken from `--test_dir`/annotations.json
 
+Or, if you would prefer the gradio interface (same command with `-gradio`)
+```
+$ source venv/bin/activate && ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth -gradio
+```
+And modify the confidence level and selected classes appropriately. 
 
 ## Data "Discovery" 
 
