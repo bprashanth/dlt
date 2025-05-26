@@ -190,6 +190,9 @@ tile/*
 !val/*.json
 !tile/*.json
 
+# Ignore inference files 
+inference/
+
 # Ignore common image file extensions at the top level and within subdirectories
 *.jpg
 *.jpeg
