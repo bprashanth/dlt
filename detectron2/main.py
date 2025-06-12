@@ -191,6 +191,12 @@ def main():
     if not pipeline_config.get('skip_tiling', False):
         logging.info(f"Step 3: Tile Generation")
         # Calculate overlap in pixels from percentage
+        # Since pull/35, we are using percentage overlap instead of pixels.
+        # This could be a sort of "breaking change", meaning if you have
+        # inference plots generated with the old overlap number, and you rerun
+        # tiling, you will not be able to stitch the inference tiles back
+        # together with the new tile_metadata.json file.
+        # Hence, the rerun tiling with the old values, set output=128.
         overlap_pixels = int((args.overlap / 100.0) * args.tile_size)
         tile_generator = TileGenerator(
             discovery_results,
