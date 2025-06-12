@@ -48,7 +48,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
         ],
         # volumes={
         #    os.path.abspath("."): {"bind": "/app", "mode": "rw"}
-        #},
+        # },
         working_dir="/app",
         network_mode="host",
         detach=True,
@@ -114,8 +114,8 @@ def main():
                         help="Where to save tiles and intermediate JSON")
     parser.add_argument("--tile_size", type=int,
                         default=512, help="Tile size in pixels")
-    parser.add_argument("--overlap", type=int, default=128,
-                        help="Overlap between tiles in pixels")
+    parser.add_argument("--overlap", type=float, default=25.0,
+                        help="Overlap between tiles in percentage (default 25%)")
     parser.add_argument("--skip_threshold", type=float, default=10.0,
                         help="Minimum percent of valid pixels required in a tile to be included in the dataset. This argument is used to skip tiles that are mostly transparent/nodata. Setting to 10.0 means that tiles with 10% or more valid pixels will be included.")
     parser.add_argument("--train_dir", type=str, required=True,
@@ -190,11 +190,13 @@ def main():
     # Tile Generation
     if not pipeline_config.get('skip_tiling', False):
         logging.info(f"Step 3: Tile Generation")
+        # Calculate overlap in pixels from percentage
+        overlap_pixels = int((args.overlap / 100.0) * args.tile_size)
         tile_generator = TileGenerator(
             discovery_results,
             args.tile_output_dir,
             args.tile_size,
-            args.overlap,
+            overlap_pixels,
             args.skip_threshold,
             args.no_tile
         )
