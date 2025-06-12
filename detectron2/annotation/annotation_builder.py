@@ -64,6 +64,7 @@ class AnnotationBuilder:
             test_split=0.1,
             seed=42,
             focus_label=None,
+            # HACK: only for debugging, to process a single file.
             no_tile=False
     ):
         try:
@@ -80,6 +81,10 @@ class AnnotationBuilder:
         self.no_tile = no_tile
 
         # HACK: This is only for debugging, and is only used when no_tile=True.
+        # This is used as a debugging hack to process a single tile. Set
+        # no_tile=True and file_name_hack to the name of the tile you want to
+        # process, and all tiles in the tile_metadata.json file will be ignored
+        # except for the given file_name.
         if no_tile:
             self.file_name_hack = "Hossur_Geratti_1.png"
 
@@ -105,12 +110,13 @@ class AnnotationBuilder:
         except Exception as e:
             raise ValueError(f"Error opening tile {tile_path}: {e}")
 
-    def should_process_file(self, filename):
+    def should_process_file(self, tile):
         """Determine if a file should be processed based on no_tile and file_name_hack settings.
 
         @param filename: The name of the file to check
         @returns bool: True if the file should be processed, False otherwise
         """
+        filename = tile["filename"]
         if self.no_tile and self.file_name_hack:
             if (filename == self.file_name_hack):
                 logger.info(f"Processing file: {filename}")
@@ -118,7 +124,9 @@ class AnnotationBuilder:
             else:
                 logger.info(f"Skipping file: {filename}")
                 return False
-        return True
+        # TODO(dlt/issues/37): consolidate key names with
+        # tile_generator.
+        return tile.get("is_valid", True)
 
     def run(self):
         """Build annotations and save to disk.
@@ -140,7 +148,7 @@ class AnnotationBuilder:
         # Filter metadata before splitting
         # HACK: remove
         tile_metadata = [tile for tile in tile_metadata
-                         if self.should_process_file(tile["filename"])]
+                         if self.should_process_file(tile)]
 
         if not tile_metadata:
             raise ValueError("No files to process after filtering")

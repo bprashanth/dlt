@@ -184,7 +184,6 @@ class TileGenerator:
 
                     if not self._is_tile_valid(tile_mask):
                         skipped_tiles.append(tile_filename)
-                        continue
 
                     # Overwrite existing tiles.
                     # Since we are writing to PNG, rasterio will also supply a .
@@ -212,6 +211,7 @@ class TileGenerator:
                         "tile_bounds": list(tile_bounds),
                         "pixel_origin": [x, y],
                         "crs": crs.to_string(),
+                        "is_valid": tile_filename not in skipped_tiles
                     })
 
         if skipped_tiles:
