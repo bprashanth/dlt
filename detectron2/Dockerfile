@@ -51,7 +51,7 @@ WORKDIR /app
 RUN chmod +x trainer.py
 
 # ENTRYPOINT ["python"]
-CMD ["python", "trainer.py"]
+# CMD ["python", "trainer.py"]
 
 # Start Jupyter Notebook server
 # CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--allow-root", "--NotebookApp.token=''"]

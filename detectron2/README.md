@@ -2,7 +2,9 @@
 
 Drone Lantana Detectors based on Detectron2
 
-## Quickstart
+For a quickstart and a brief overview of the pipeline, continue reading. For everything else, see [docs](./docs/). 
+
+## Pipeline 
 
 ```console 
      1. Discovery 
@@ -127,10 +129,11 @@ Set `pipeline_config` to
 }
 ```
 There are 2 modes of inference: 
-1. Batch mode 
+1. Single image mode 
 2. Through the UI
+3. Batch mode (unimplemented)
 
-Batch mode 
+Single image mode 
 ```
 $ source venv/bin/activate && ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth 
 ```
@@ -227,8 +230,3 @@ $ python ./main.py --train_data "" --inference_data ./data/val/ --weights_path .
 
 The output is saved to `output/images`
 
-## Assets
-
-- SAMCLIP
-  - Checkpoint: VIT-B SAM [model](https://github.com/facebookresearch/segment-anything?tab=readme-ov-file#model-checkpoints)
-  - Source: [SAM](https://github.com/facebookresearch/segment-anything?tab=readme-ov-file#model-checkpoints) from meta

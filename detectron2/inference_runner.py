@@ -11,7 +11,7 @@ from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
 from detectron2.data import MetadataCatalog
 from detectron2 import model_zoo
-from coco import CocoHelper
+from annotation import CocoHelper
 from inference_utils import DetectronVisualizer
 import gradio as gr
 

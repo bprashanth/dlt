@@ -73,7 +73,7 @@ python3 main.py --root_dir ~/rtmp/data/shola/data/ \
     --inference_weights_path "${WEIGHTS}" \
     --inference_test_image "${IMAGE}" \
     --inference_output_dir "${OUTPUT_DIR}" \
-    --inference_image detectron2:1.3 \
+    --inference_image detectron2-inference:1.4 \
     --inference_confidence_threshold ${CONFIDENCE} \
     ${GRADIO_MODE:+--inference_gradio_mode} \
     --log_level INFO

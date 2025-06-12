@@ -13,7 +13,7 @@ import logging
 import argparse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from coco import CocoHelper
+from annotation import CocoHelper
 
 
 def setup_logger(log_level=logging.INFO):

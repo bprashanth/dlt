@@ -44,7 +44,7 @@ from tqdm import tqdm
 import random
 import logging
 from PIL import Image
-from geometry import GeometryValidator
+from validation import GeometryValidator
 import PIL
 
 # Get module-level logger
