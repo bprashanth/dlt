@@ -7,7 +7,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from inference_utils import DetectronVisualizer
-from coco import CocoHelper
+from annotation import CocoHelper
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

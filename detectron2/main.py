@@ -7,8 +7,8 @@ import docker
 import os
 from validation import DataValidator
 from discovery import DataDiscovery
-from tile_generator import TileGenerator
-from annotation_builder import AnnotationBuilder
+from tiling import TileGenerator
+from annotation import AnnotationBuilder
 
 
 def setup_logger(log_level=logging.INFO):
@@ -46,9 +46,9 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
             "--resume",
             "--log_level", log_level
         ],
-        volumes={
-            os.path.abspath("."): {"bind": "/app", "mode": "rw"}
-        },
+        # volumes={
+        #    os.path.abspath("."): {"bind": "/app", "mode": "rw"}
+        #},
         working_dir="/app",
         network_mode="host",
         detach=True,

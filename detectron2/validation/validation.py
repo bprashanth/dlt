@@ -19,7 +19,7 @@ import fiona
 import logging
 from exceptions import InputException
 from exceptions import ValidationException
-from geometry import GeometryValidator
+from .geometry import GeometryValidator
 # Get module-level logger
 logger = logging.getLogger(__name__)
 
