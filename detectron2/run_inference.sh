@@ -52,9 +52,13 @@ file_name=$(basename "${IMAGE}")
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
-python3 ./hack/coco_on_png.py --png "${IMAGE}" \
-    --coco ./data/test/annotations.json \
-    --output "${OUTPUT_DIR}/${file_name}" 
+if [ -f "${IMAGE}" ]; then
+    python3 ./hack/coco_on_png.py --png "${IMAGE}" \
+        --coco ./data/test/annotations.json \
+        --output "${OUTPUT_DIR}/${file_name}" 
+else
+    echo "Skipping coco annotation overlay since ${IMAGE} doesn't exist"
+fi
 
 echo -e "\n==================================================="
 echo "Ground Truth saved to: ${OUTPUT_DIR}/${file_name}"

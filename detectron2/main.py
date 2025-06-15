@@ -9,6 +9,7 @@ from validation import DataValidator
 from discovery import DataDiscovery
 from tiling import TileGenerator
 from annotation import AnnotationBuilder
+from tiling import TileStitcher
 
 
 def setup_logger(log_level=logging.INFO):
@@ -198,6 +199,8 @@ def main():
         # together with the new tile_metadata.json file.
         # Hence, the rerun tiling with the old values, set output=128.
         overlap_pixels = int((args.overlap / 100.0) * args.tile_size)
+        logging.info(f"Tile size: {args.tile_size} pixels")
+        logging.info(f"Tile overlap: {overlap_pixels} pixels, {args.overlap}%")
         tile_generator = TileGenerator(
             discovery_results,
             args.tile_output_dir,
@@ -264,6 +267,17 @@ def main():
         )
     else:
         logging.info("Step 6: Inference (Skipped)")
+
+    if not pipeline_config.get('skip_stitching', False):
+        logging.info("Step 7: Stitching")
+        stitcher = TileStitcher(
+            args.tile_output_dir,
+            args.inference_output_dir,
+            "png"
+        )
+        stitcher.stitch()
+    else:
+        logging.info("Step 7: Stitching (Skipped)")
 
 
 if __name__ == "__main__":
