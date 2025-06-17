@@ -67,7 +67,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
-def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode):
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode, minimal_visualization, classes):
     client = docker.from_env()
 
     cmd = [
@@ -76,11 +76,16 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
         "--test_image", test_image,
         "--output_dir", output_dir,
         "--test_dir", test_dir,
-        "--confidence_threshold", str(confidence_threshold),
+        "--confidence_threshold", str(confidence_threshold)
     ]
 
     if gradio_mode:
         cmd.append("--gradio_mode")
+    if minimal_visualization:
+        cmd.append("--minimal_visualization")
+    if classes:
+        cmd.append("--classes")
+        cmd.append(classes)
 
     container = client.containers.run(
         image=image_name,
@@ -157,6 +162,11 @@ def main():
                         help="Run the Gradio interface instead of the command line interface.")
     parser.add_argument("--pipeline_config", type=str,
                         help="Path to JSON config file controlling pipeline stages")
+    parser.add_argument("--inference_minimal_visualization", action="store_true",
+                        default=False,
+                        help="Use minimal visualization (no legends, borders, or text).")
+    parser.add_argument("--inference_classes", type=str, default=None,
+                        help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
 
     args = parser.parse_args()
 
@@ -263,7 +273,9 @@ def main():
             args.inference_image,
             args.test_dir,
             args.inference_confidence_threshold,
-            args.inference_gradio_mode
+            args.inference_gradio_mode,
+            args.inference_minimal_visualization,
+            args.inference_classes
         )
     else:
         logging.info("Step 6: Inference (Skipped)")

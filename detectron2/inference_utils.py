@@ -16,47 +16,92 @@ import tempfile
 class DetectronVisualizer:
     EDGE_COLOR = 'red'
 
-    def __init__(self, class_names):
+    def __init__(self, class_names, selected_classes=None, minimal_visualization=False):
         """Initialize the DetectronVisualizer.
 
         @param output_dir: Directory where visualizations and predictions will be saved
         @param class_names: List of class names corresponding to model predictions
+        @param selected_classes: Optional list of class names to filter
+        @param minimal_visualization: If True, only draws polygons without legends, borders, or text
         """
         self.class_names = class_names
         self.logger = logging.getLogger("visualizer")
+        self.selected_classes = selected_classes
+        self.minimal_visualization = minimal_visualization
 
-    def render_predictions(self, image, outputs, selected_classes=None, save_path=None):
+    def _merge_overlapping_contours(self, contours, image_shape):
+        """Merge overlapping or intersecting contours into a single continuous border.
+
+        @param contours: List of contours to merge
+        @param image_shape: Shape of the image (height, width)
+        @returns: List of merged contours
+        """
+        if not contours:
+            return []
+
+        # Create mask with actual image dimensions
+        height, width = image_shape[:2]
+        combined_mask = np.zeros((height, width), dtype=np.uint8)
+
+        # Draw all contours onto the mask
+        for contour in contours:
+            cv2.drawContours(combined_mask, [contour], -1, 1, -1)
+
+        # Find all contours in the combined mask
+        all_contours, hierarchy = cv2.findContours(
+            combined_mask,
+            cv2.RETR_TREE,  # Use TREE to get parent-child relationships
+            cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        # Filter to keep only the outermost contours
+        outer_contours = []
+        if hierarchy is not None:
+            hierarchy = hierarchy[0]  # Get the first hierarchy level
+            for i, (contour, h) in enumerate(zip(all_contours, hierarchy)):
+                # If this contour has no parent (is outermost) or its parent is -1
+                if h[3] == -1:  # h[3] is the parent index
+                    outer_contours.append(contour)
+        else:
+            # If no hierarchy, use all contours
+            outer_contours = all_contours
+
+        return outer_contours
+
+    def render_predictions(self, image, outputs, save_path=None):
         """
         Render predictions over image as a PNG or return as a NumPy array.
 
         @param image: Input image (OpenCV BGR)
         @param outputs: Detectron2 outputs
-        @param selected_classes: Optional list of class names to filter
         @param save_path: If provided, saves to disk. If None, returns RGB NumPy array
 
         @returns: None if saved to disk, else NumPy RGB image
         """
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        predictions = outputs["instances"].to("cpu")
+        height, width = image.shape[:2]
 
-        fig, ax = plt.subplots(figsize=(10, 10))
+        # Use actual image dimensions
+        dpi = 100
+        fig, ax = plt.subplots(
+            figsize=(width/dpi, height/dpi), dpi=dpi, frameon=False)
+        ax.set_axis_off()
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
         ax.imshow(image_rgb)
-        ax.set_title("Predicted Masks")
 
         categories_present = set()
         cmap = plt.colormaps["tab20"]
 
-        # self.logger.info(
-        #     f"Predictions: {len(predictions)} classes: {predictions.pred_classes}\nClass names: {self.class_names}")
+        # Dictionary to store contours by class
+        class_contours = {}
 
+        predictions = outputs["instances"].to("cpu")
         for i in range(len(predictions)):
             class_id = int(predictions.pred_classes[i])
             class_name = self.class_names[class_id]
 
-            # self.logger.info(
-            #     f"Prediction classes: {predictions.pred_classes[i]}\nClass names: {self.class_names}")
-
-            if selected_classes and class_name not in selected_classes:
+            if self.selected_classes and class_name not in self.selected_classes:
                 self.logger.info(
                     f"[render_predictions] skipped class {class_name} because it's not in selected_classes")
                 continue
@@ -72,6 +117,12 @@ class DetectronVisualizer:
                 cv2.CHAIN_APPROX_SIMPLE
             )
 
+            # Store contours for this class
+            if class_id not in class_contours:
+                class_contours[class_id] = []
+            class_contours[class_id].extend(contours)
+
+            # Draw filled polygons
             for contour in contours:
                 polygon = contour[:, 0, :]
                 patch = patches.Polygon(
@@ -84,36 +135,46 @@ class DetectronVisualizer:
                 )
                 ax.add_patch(patch)
 
+                # Only add text (confidence score) if not in minimal mode
+                if not self.minimal_visualization:
+                    centroid = np.mean(polygon, axis=0)
+                    ax.text(centroid[0], centroid[1], f"{score:.2f}",
+                            color='white', fontsize=8,
+                            bbox=dict(facecolor='black', alpha=0.5,
+                                      edgecolor='none', pad=1),
+                            ha='center', va='bottom')
+
+        # Process borders for each class separately
+        for class_id, contours in class_contours.items():
+            color = cmap(class_id * 2)
+            merged_contours = self._merge_overlapping_contours(
+                contours, image.shape)
+            for contour in merged_contours:
+                polygon = contour[:, 0, :]
                 border = patches.Polygon(
                     polygon,
                     closed=True,
-                    edgecolor=self.EDGE_COLOR,
+                    edgecolor=color,  # Use class color for border
                     facecolor='none',
                     alpha=1.0,
-                    linewidth=1.0
+                    linewidth=3.0
                 )
                 ax.add_patch(border)
 
-                centroid = np.mean(polygon, axis=0)
-                ax.text(centroid[0], centroid[1], f"{score:.2f}",
-                        color='white', fontsize=8,
-                        bbox=dict(facecolor='black', alpha=0.5,
-                                  edgecolor='none', pad=1),
-                        ha='center', va='bottom')
-
-        handles = [
-            patches.Patch(color=cmap(cid * 2),
-                          label=self.class_names[cid],
-                          alpha=0.2)
-            for cid in sorted(categories_present)
-        ]
-        ax.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax.axis('off')
-        plt.tight_layout()
+        # Only add legend if not in minimal mode
+        if not self.minimal_visualization:
+            handles = [
+                patches.Patch(color=cmap(cid * 2),
+                              label=self.class_names[cid],
+                              alpha=0.2)
+                for cid in sorted(categories_present)
+            ]
+            ax.legend(handles=handles, bbox_to_anchor=(
+                1.05, 1), loc='upper left')
+            ax.axis('off')
+            plt.tight_layout()
 
         # Use temporary file if save_path not provided
-        # In both cases, whether gradio rendering or writing to file, we write
-        # to file and read back from file anyway
         temp_file = None
         output_path = save_path
         if not save_path:
@@ -121,21 +182,25 @@ class DetectronVisualizer:
             output_path = temp_file.name
 
         try:
-            plt.savefig(output_path, bbox_inches='tight',
-                        pad_inches=0, format="png")
+            # Save with no padding if minimal visualization
+            if self.minimal_visualization:
+                plt.savefig(output_path, bbox_inches=None,
+                            pad_inches=0, format="png")
+            else:
+                plt.savefig(output_path, bbox_inches='tight',
+                            pad_inches=0, format="png")
             plt.close(fig)
             return cv2.imread(output_path)
         finally:
             if temp_file:
                 temp_file.close()
 
-    def format_predictions(self, outputs, image_path, selected_classes=None, save_path=None):
+    def format_predictions(self, outputs, image_path, save_path=None):
         """
         Format predictions into COCO-style JSON.
 
         @param outputs: Detectron2 outputs
         @param image_path: Original image filename
-        @param selected_classes: Optional list of class names to include
         @param save_path: If provided, writes JSON to disk. Else, returns list.
 
         @returns: None if saved to disk, else list of prediction dicts
@@ -146,7 +211,7 @@ class DetectronVisualizer:
         for i in range(len(predictions)):
             class_id = int(predictions.pred_classes[i])
             class_name = self.class_names[class_id]
-            if selected_classes and class_name not in selected_classes:
+            if self.selected_classes and class_name not in self.selected_classes:
                 self.logger.info(
                     f"[format_predictions] would have skipped class {class_name} because it's not in selected_classes")
 
@@ -180,16 +245,17 @@ class DetectronVisualizer:
             return results
 
     def draw_predictions(self, image, outputs, output_png):
-        self.render_predictions(image, outputs, save_path=output_png)
+        self.render_predictions(
+            image, outputs, save_path=output_png)
 
-    def get_overlay(self, image, outputs, selected_classes=None):
-        return self.render_predictions(image, outputs, selected_classes, save_path=None)
+    def get_overlay(self, image, outputs):
+        return self.render_predictions(image, outputs, save_path=None)
 
     def save_predictions_json(self, outputs, image_path, output_json):
         self.format_predictions(outputs, image_path, save_path=output_json)
 
-    def format_predictions_as_json(self, outputs, image_path, selected_classes=None):
-        return self.format_predictions(outputs, image_path, selected_classes, save_path=None)
+    def format_predictions_as_json(self, outputs, image_path):
+        return self.format_predictions(outputs, image_path, save_path=None)
 
     def draw_coco_annotations(
             self, image_path, coco_path, output_path="coco_overlay.png"):
@@ -291,7 +357,7 @@ class DetectronVisualizer:
             save_path = temp_file.name
 
         try:
-            plt.savefig(save_path, bbox_inches='tight',
+            plt.savefig(save_path, bbox_inches=None,
                         pad_inches=0, format="png")
             plt.close(fig)
             return cv2.imread(save_path)

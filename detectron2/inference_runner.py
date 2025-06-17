@@ -1,3 +1,17 @@
+"""
+This script is used to run inference on a single image. 
+
+NB: The classes supplied via the --classes argument are used to filter the predictions. You can find class names in the test/annotations.json file, or by running the following command: 
+    python3 ./hack/type_name_combos.py
+
+Usage: 
+    python inference_runner.py --weights_path path/to/weights.pth \
+        --test_dir path/to/test \
+        --output_dir path/to/output \
+        --test_image path/to/image.jpg \
+        --classes "Lantana Cover,Trees" \
+        --minimal_visualization
+"""
 import os
 import cv2
 import json
@@ -45,11 +59,11 @@ class GradioLauncher:
 
             # Get visualization (which returns RGB since it uses matplotlib)
             vis = self.runner.get_visualized_image(
-                image, outputs, selected_classes)
+                image, outputs)
 
             # No need for additional conversion since vis is already in RGB
             json_data = self.runner.get_coco_json(
-                outputs, "gradio_input.jpg", selected_classes)
+                outputs, "gradio_input.jpg")
             return vis, json_data
 
         gr.Interface(
@@ -71,13 +85,12 @@ class GradioLauncher:
 
 
 class InferenceRunner:
-    def __init__(self, weights_path, output_dir, test_dir, confidence_threshold=0.3, test_image=None):
+    def __init__(self, weights_path, output_dir, test_dir, confidence_threshold=0.3, test_image=None, minimal_visualization=False, selected_classes=None):
         self.weights_path = weights_path
         self.output_dir = output_dir
         self.test_dir = test_dir
         self.confidence_threshold = confidence_threshold
         self.test_image = test_image
-
         # Only try to get input_basename if test_image is provided
         if test_image is not None:
             self.input_basename = os.path.basename(test_image)
@@ -103,7 +116,8 @@ class InferenceRunner:
             f"Loaded {len(self.class_names)} classes from {self.test_coco_path}")
 
         self.predictor = DefaultPredictor(self.cfg)
-        self.visualizer = DetectronVisualizer(self.class_names)
+        self.visualizer = DetectronVisualizer(
+            self.class_names, selected_classes, minimal_visualization)
 
     def _get_config(self):
         cfg = get_cfg()
@@ -124,7 +138,8 @@ class InferenceRunner:
         outputs = self.predictor(image)
         self.logger.info(outputs["instances"])
 
-        self.visualizer.draw_predictions(image, outputs, self.output_png)
+        self.visualizer.draw_predictions(
+            image, outputs, self.output_png)
         self.visualizer.save_predictions_json(
             outputs, self.test_image, self.output_json)
         self.logger.info(f"Saved overlay to {self.output_png}")
@@ -133,12 +148,12 @@ class InferenceRunner:
     def predict_image(self, image):
         return self.predictor(image)
 
-    def get_visualized_image(self, image, outputs, selected_classes=None):
-        return self.visualizer.get_overlay(image, outputs, selected_classes)
+    def get_visualized_image(self, image, outputs):
+        return self.visualizer.get_overlay(image, outputs)
 
-    def get_coco_json(self, outputs, image_path, selected_classes=None):
+    def get_coco_json(self, outputs, image_path):
         return self.visualizer.format_predictions_as_json(
-            outputs, image_path, selected_classes)
+            outputs, image_path)
 
 
 def main():
@@ -155,8 +170,18 @@ def main():
                         help="Confidence score threshold for predictions (default: 0.3)")
     parser.add_argument("--gradio_mode", action="store_true",
                         help="Run the Gradio interface instead of the command line interface.")
+    parser.add_argument("--classes", type=str, default=None,
+                        help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
+    parser.add_argument("--minimal_visualization", action="store_true",
+                        help="Use minimal visualization (no legends, borders, or text).")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
+
+    # Parse the classes argument if provided
+    selected_classes = None
+    if args.classes:
+        selected_classes = [c.strip() for c in args.classes.split(",")]
+        logging.info(f"Filtering predictions for classes: {selected_classes}")
 
     if args.gradio_mode:
         logging.info("Running in interactive (UI) mode...")
@@ -174,8 +199,11 @@ def main():
             output_dir=args.output_dir,
             test_dir=args.test_dir,
             confidence_threshold=args.confidence_threshold,
-            test_image=args.test_image
+            test_image=args.test_image,
+            minimal_visualization=args.minimal_visualization,
+            selected_classes=selected_classes
         )
+        # Pass selected_classes to run method
         runner.run()
 
 
