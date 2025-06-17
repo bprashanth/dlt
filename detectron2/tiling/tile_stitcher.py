@@ -33,6 +33,8 @@ TileStitcher(
 ).stitch()
 
 And look for the stitched site images in the output_tile_dir/images directory. 
+
+In other words the output_tile_dir is both the base directory for inputs *into* the final mosaic, as well as the directory into which the final mosaic is saved. If the tiles are not found in the output_tile_dir, the stitcher will look for them in the input_tile_dir/images directory. 
 """
 
 import os
@@ -115,11 +117,14 @@ class TileStitcher:
         for tile in self.tile_metadata:
             site_tiles[tile['site']].append(tile)
 
+        flat_metadata = []
+
         for site_name, tiles in site_tiles.items():
             logger.info(f"\nStitching site: {site_name}")
             stitched_width, stitched_height = self._get_canvas_size(tiles)
             canvas = Image.new('RGB', (stitched_width, stitched_height))
 
+            tile_index = 0
             for tile in tqdm(tiles):
                 x, y = tile['pixel_origin']
                 tile_file = tile['filename']
@@ -139,9 +144,27 @@ class TileStitcher:
 
                 with Image.open(tile_path) as tile_img:
                     canvas.paste(tile_img, (x, y))
+
+                flat_metadata.append({
+                    "image": os.path.relpath(tile_path, self.output_tile_dir),
+                    "tile_origin": [x, y],
+                    "tile_index": tile_index,
+                    "site": {
+                        "name": site_name,
+                        "preview": f"{site_name}_stitched.png"
+                    }
+                })
+                tile_index += 1
+
             output_path = os.path.join(
                 self.output_tile_dir, f"{site_name}_stitched.png")
             canvas.save(output_path)
             logger.info(f"Stitched image saved to: {output_path}")
 
-        return True
+        inference_metadata_path = os.path.join(
+            self.output_tile_dir, "inference_tile_metadata.json")
+        with open(inference_metadata_path, 'w') as f:
+            json.dump(flat_metadata, f, indent=2)
+        logger.info(f"Inference metadata saved to: {inference_metadata_path}")
+
+        return inference_metadata_path
