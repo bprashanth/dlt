@@ -44,7 +44,7 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 	| 
      8. InferenceRunner (docker/remote server)
 	| 
-	| Batch (file) mode 
+	| Single file mode 
 	| - Load metadata from coco 
 	| - Load weights from training 
 	| - Predict polygons 
@@ -63,6 +63,9 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
           \--> User uploads image, chooses weights + threshold + classes --> InferenceRunner is invoked per image 
 	---|
 	|
+        | Batch mode
+        | - Invokes single file mode for all files in a given input dir
+        | - Stitches these files together (see post-processing stage) 
 	|
      9. Test scoring 
 	| - Compare test coco w/ prediction coco for test scores 
@@ -74,9 +77,19 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 	| 	Loss curves
 	| 	Ablation
 	|
-     10. Post-processing
+     10. Stitching
+        | - Stitch tiles together to form a mosaic 
+        | - For tiles that are absent in the output dir, replace them with tiles from the input dir 
+        | - Resizes the stitched  mosaic map to a manageable size for the frontend 
+	| - Generates an `inference_tile_metadata.json` with parent child relationships of tiles/mosaics 
+	|
+     11. Offloading 
+        | - Generate signed s3 urls for each entry in `inference_tile_metadata.json`
+	| - Generate an `output_tile_metadata.xlsx` which can be uploaded to the frontend or shared 
+        | 
+     12. Metrics
 	| - Per (site, category, tile) metrics 
-	| ??? (stitch tiles, generate histograms/heatmaps)
+	| ??? (generate histograms/heatmaps)
 ```
 
 - Steps 1-4: Discovery, validation, tiling and COCO annotation transformation
@@ -131,21 +144,35 @@ Set `pipeline_config` to
 There are 2 modes of inference: 
 1. Single image mode 
 2. Through the UI
-3. Batch mode (unimplemented)
+3. Batch mode 
 
-Single image mode 
+### Single image mode 
+
+To run inference against a single image 
 ```
-$ source venv/bin/activate && ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth 
+$ source venv/bin/activate && ./single_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth 
 ```
 This will generate 2 images in `./inference`
 1. The base png + predictions 
 2. The base png + annotations taken from `--test_dir`/annotations.json
 
-Or, if you would prefer the gradio interface (same command with `-gradio`)
+### UI (gradio)
+
+If you would prefer the gradio interface (same command with `-gradio`)
 ```
-$ source venv/bin/activate && ./run_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth -gradio
+$ source venv/bin/activate && ./single_inference.sh -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png -output_dir ./inference -weights ./checkpoints/all/model_final.pth -gradio
 ```
 And modify the confidence level and selected classes appropriately. 
+
+### Batch mode 
+
+Run
+```shell
+./batch_inference.sh -input_dir ./data/test/images/ -output_dir ./inference
+```
+This will
+1. First run inference on all images in the test dir (by invoking `single_inference` on each image) 
+2. Then stitch them together (by again invoking `single_infrence` with the right `pipeline_config`)
 
 ## Data "Discovery" 
 
