@@ -107,6 +107,9 @@ Current situation
 
 So we don't normalize 
 
+## Downscaling 
 
-
-
+The output orthomosaics are simply too large to transmit over the wire and display in the frontend so we downscale them by a _lot_. See `tile_stitcher.py` for details. To run the downscaling standalone: 
+```
+$ python3 downscale_image.py --image ../inference/ inference_Jawal_Lakshmipura_1_x1536_y3072.png --output downscaled.png --scale_factor 0.1
+```

@@ -167,6 +167,10 @@ def main():
                         help="Use minimal visualization (no legends, borders, or text).")
     parser.add_argument("--inference_classes", type=str, default=None,
                         help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
+    parser.add_argument("--map_preview_scale_factor", type=float, default=0.1,
+                        help="Scale factor for downscaling the stitched map orthomosaic.")
+    parser.add_argument("--tile_preview_scale_factor", type=float, default=None,
+                        help="Scale factor for downscaling the tile preview images.")
 
     args = parser.parse_args()
 
@@ -285,7 +289,9 @@ def main():
         stitcher = TileStitcher(
             args.tile_output_dir,
             args.inference_output_dir,
-            "png"
+            "png",
+            map_preview_scale_factor=args.map_preview_scale_factor,
+            tile_preview_scale_factor=args.tile_preview_scale_factor
         )
         stitcher.stitch()
     else:
