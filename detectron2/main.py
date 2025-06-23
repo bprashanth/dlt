@@ -10,6 +10,7 @@ from discovery import DataDiscovery
 from tiling import TileGenerator
 from annotation import AnnotationBuilder
 from tiling import TileStitcher
+from offloading import MapOffloader
 
 
 def setup_logger(log_level=logging.INFO):
@@ -171,6 +172,10 @@ def main():
                         help="Scale factor for downscaling the stitched map orthomosaic.")
     parser.add_argument("--tile_preview_scale_factor", type=float, default=None,
                         help="Scale factor for downscaling the tile preview images.")
+    parser.add_argument("--s3_bucket", type=str, default="forestfomo",
+                        help="S3 bucket to offload the map to.")
+    parser.add_argument("--output_metadata_path", type=str, default=None,
+                        help="Path to the signed_tile_metadata.json for the offloaded map metadata. Defaults to inference_output_dir/signed_tile_metadata.json")
 
     args = parser.parse_args()
 
@@ -284,6 +289,7 @@ def main():
     else:
         logging.info("Step 6: Inference (Skipped)")
 
+    inference_metadata_path = None
     if not pipeline_config.get('skip_stitching', False):
         logging.info("Step 7: Stitching")
         stitcher = TileStitcher(
@@ -293,9 +299,28 @@ def main():
             map_preview_scale_factor=args.map_preview_scale_factor,
             tile_preview_scale_factor=args.tile_preview_scale_factor
         )
-        stitcher.stitch()
+        inference_metadata_path = stitcher.stitch()
     else:
         logging.info("Step 7: Stitching (Skipped)")
+
+    if not pipeline_config.get('skip_offloading', False):
+        if not args.output_metadata_path:
+            args.output_metadata_path = os.path.join(
+                args.inference_output_dir, "signed_tile_metadata.json")
+        logging.info(
+            f"Step 8: Offloading to {args.s3_bucket}")
+        if not inference_metadata_path:
+            inference_metadata_path = os.path.join(
+                args.inference_output_dir, "inference_tile_metadata.json")
+
+        offloader = MapOffloader(
+            inference_metadata_path,
+            s3_bucket_name=args.s3_bucket,
+            output_metadata_path=args.output_metadata_path
+        )
+        output_metadata_path = offloader.process()
+    else:
+        logging.info("Step 8: Offloading (Skipped)")
 
 
 if __name__ == "__main__":
