@@ -304,7 +304,7 @@ class TileStitcher:
                         "source": os.path.abspath(tile_path),
                         "preview": os.path.abspath(tile_preview_path) if tile_preview_path else None,
                         "predictions": os.path.abspath(predictions_path) if predictions_path else None,
-                        "origin": [x, y],
+                        "pixel_origin": [x, y],
                         "index": tile_index,
                         "bounds": bounds_gps,
                         # TODO(prashanth@): Ideally, we would call
