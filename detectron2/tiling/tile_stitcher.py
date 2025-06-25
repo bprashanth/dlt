@@ -86,6 +86,8 @@ class TileStitcher:
         self.step_size = None
         self.output_image_files = [
             f for f in os.listdir(self.output_tile_dir)]
+        self.output_json_files = [
+            f for f in os.listdir(self.output_tile_dir) if f.endswith('.json')]
 
     def _load_metadata(self):
         with open(self.metadata_path, 'r') as f:
@@ -105,8 +107,7 @@ class TileStitcher:
             tile_path = os.path.join(self.input_images_dir, tile['filename'])
             if os.path.exists(tile_path):
                 with Image.open(tile_path) as img:
-                    self.tile_size = img.size[0]
-                    return
+                    return img.size[0]
         return RuntimeError("No valid tiles found in input directory to determine tile size.")
 
     def _get_canvas_size(self, tiles):
@@ -121,10 +122,35 @@ class TileStitcher:
 
     def _match_output_file(self, original_filename):
         # Match based on suffix: find file ending in original_filename.
+        inference_path = None
+        predictions_path = None
+
         for fname in self.output_image_files:
             if fname.endswith(original_filename):
-                return os.path.join(self.output_tile_dir, fname)
-        return None
+                inference_path = os.path.join(self.output_tile_dir, fname)
+                break
+
+        # If inference file found, look for corresponding predictions file
+        if inference_path:
+            # Extract the base name from the inference file (e.g., "inference_Hossur_Geratti_2_x4608_y4608.png")
+            inference_basename = os.path.basename(inference_path)
+            # Create the expected predictions filename (e.g., "predictions_Hossur_Geratti_2_x4608_y4608.json")
+            # Handle different image extensions (png, jpg, jpeg, etc.)
+            predictions_filename = inference_basename.replace(
+                "inference_", "predictions_")
+            # Remove the image extension and add .json
+            base_name = os.path.splitext(predictions_filename)[0]
+            predictions_filename = base_name + ".json"
+            predictions_path = os.path.join(
+                self.output_tile_dir, predictions_filename)
+
+            # Check if predictions file exists
+            if not os.path.exists(predictions_path):
+                logger.warning(
+                    f"Warning: Inference file found at {inference_path} but predictions file not found at {predictions_path}")
+                predictions_path = None
+
+        return inference_path, predictions_path
 
     def _find_input_tile_metadata(self, original_filename):
         """Find the input tile metadata for a given filename.
@@ -201,7 +227,7 @@ class TileStitcher:
 
     def stitch(self):
         logger.info("Loading metadata and determining tile layout...")
-        self._get_tile_size()
+        self.tile_size = self._get_tile_size()
         logger.debug(f"Tile size: {self.tile_size}")
 
         # Group tiles by site
@@ -231,11 +257,12 @@ class TileStitcher:
 
                 # Prefer the file in the output_dir and fallback to the
                 # original tile if not found.
-                output_tile_path = self._match_output_file(tile_file)
-                tile_path = output_tile_path
-
+                tile_path, predictions_path = self._match_output_file(
+                    tile_file)
                 if not tile_path or not os.path.exists(tile_path):
                     tile_path = os.path.join(self.input_images_dir, tile_file)
+                    # If using input tile, there won't be predictions file
+                    predictions_path = None
 
                 if not os.path.exists(tile_path):
                     logger.warning(
@@ -276,9 +303,13 @@ class TileStitcher:
                     "image": {
                         "source": os.path.abspath(tile_path),
                         "preview": os.path.abspath(tile_preview_path) if tile_preview_path else None,
+                        "predictions": os.path.abspath(predictions_path) if predictions_path else None,
                         "origin": [x, y],
                         "index": tile_index,
                         "bounds": bounds_gps,
+                        # TODO(prashanth@): Ideally, we would call
+                        # get_tile_size for each tile and set separately.
+                        "size": self.tile_size,
                         "crs": crs_gps,
                         "center": {
                             "lon": center_gps[0],
