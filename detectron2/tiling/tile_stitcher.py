@@ -355,10 +355,10 @@ class TileStitcher:
                         }
                     })
 
-        inference_metadata_path = os.path.join(
-            self.output_tile_dir, "inference_tile_metadata.json")
-        with open(inference_metadata_path, 'w') as f:
+        stitched_metadata_path = os.path.join(
+            self.output_tile_dir, "stitched_tile_metadata.json")
+        with open(stitched_metadata_path, 'w') as f:
             json.dump(flat_metadata, f, indent=2)
-        logger.info(f"Inference metadata saved to: {inference_metadata_path}")
+        logger.info(f"Stitched metadata saved to: {stitched_metadata_path}")
 
-        return inference_metadata_path
+        return stitched_metadata_path

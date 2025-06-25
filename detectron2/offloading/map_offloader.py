@@ -35,7 +35,7 @@ class MapOffloader:
         self.region = region
         self.expiry_seconds = expiry_seconds
         self.output_metadata_path = output_metadata_path or os.path.join(
-            os.path.dirname(metadata_path), "signed_tile_metadata.json")
+            os.path.dirname(metadata_path), "offloaded_tile_metadata.json")
 
         self.s3 = boto3.client("s3", region_name=region)
         self._ensure_bucket_exists()
@@ -110,11 +110,11 @@ class MapOffloader:
         with open(self.output_metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        root_output_key = "maps/signed_tile_metadata.json"
+        root_output_key = "maps/offloaded_tile_metadata.json"
         self.s3.upload_file(self.output_metadata_path,
                             self.bucket_name, root_output_key)
 
         logger.info(
-            f"Signed metadata written to {self.output_metadata_path} and uploaded to S3 at {root_output_key}.")
+            f"Offloaded metadata written to {self.output_metadata_path} and uploaded to S3 at {root_output_key}.")
 
         return self.output_metadata_path
