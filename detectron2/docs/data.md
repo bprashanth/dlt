@@ -113,3 +113,10 @@ The output orthomosaics are simply too large to transmit over the wire and displ
 ```
 $ python3 downscale_image.py --image ../inference/ inference_Jawal_Lakshmipura_1_x1536_y3072.png --output downscaled.png --scale_factor 0.1
 ```
+
+## Generating output excels 
+
+You can convert the `output_tile_metadata.json` (output of the `MapOffloader`) to excel as follows 
+```shell
+$ python3 ./hack/excelify_output.py --input inference/signed_tile_metadata.json --output inference/signed_tile_metadata.xlsx
+```

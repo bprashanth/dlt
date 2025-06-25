@@ -56,6 +56,7 @@ from PIL import Image
 from tqdm import tqdm
 import logging
 from collections import defaultdict
+from tiling.bounds import BoundsConverter
 
 # Get module-level logger
 logger = logging.getLogger(__name__)
@@ -125,6 +126,50 @@ class TileStitcher:
                 return os.path.join(self.output_tile_dir, fname)
         return None
 
+    def _find_input_tile_metadata(self, original_filename):
+        """Find the input tile metadata for a given filename.
+
+        Args:
+            original_filename: The original tile filename to match
+
+        Returns:
+            dict: The matching tile metadata from input tiles_metadata.json, or None if not found
+        """
+        for tile in self.tile_metadata:
+            if tile['filename'] == original_filename:
+                return tile
+        return None
+
+    def _calculate_site_bounds(self, tiles):
+        """Calculate the bounds of a site from its edge tiles.
+
+        This function finds the minimum and maximum bounds from all tiles
+        to determine the overall boundary of the stitched image.
+
+        Args:
+            tiles: List of tile metadata dictionaries for a site
+
+        Returns:
+            tuple: (bounds, crs) where bounds is [min_x, min_y, max_x, max_y] and crs is the coordinate system
+        """
+        if not tiles:
+            return None, None
+
+        # Initialize with first tile's bounds
+        first_tile = tiles[0]
+        min_x, min_y, max_x, max_y = first_tile['tile_bounds']
+        crs = first_tile['crs']
+
+        # Find the overall bounds by taking min/max across all tiles
+        for tile in tiles:
+            tile_bounds = tile['tile_bounds']
+            min_x = min(min_x, tile_bounds[0])
+            min_y = min(min_y, tile_bounds[1])
+            max_x = max(max_x, tile_bounds[2])
+            max_y = max(max_y, tile_bounds[3])
+
+        return [min_x, min_y, max_x, max_y], crs
+
     @staticmethod
     def generate_preview(full_image_path, preview_image_path, scale_factor=0.1):
         """Generate a downscaled preview image from a full image.
@@ -171,6 +216,14 @@ class TileStitcher:
             stitched_width, stitched_height = self._get_canvas_size(tiles)
             canvas = Image.new('RGB', (stitched_width, stitched_height))
 
+            # Calculate site bounds before processing tiles
+            site_bounds, site_crs = self._calculate_site_bounds(tiles)
+            site_bounds_converter = BoundsConverter(
+                site_bounds, site_crs, BoundsConverter.GPS_CRS)
+            site_bounds_gps = site_bounds_converter.get_bounds()
+            site_center_gps = site_bounds_converter.get_center()
+            site_crs_gps = site_bounds_converter.target_crs
+
             tile_index = 0
             for tile in tqdm(tiles):
                 x, y = tile['pixel_origin']
@@ -203,20 +256,38 @@ class TileStitcher:
                         tile_preview_path,
                         self.tile_preview_scale_factor)
 
+                # Get the original tile metadata to extract bounds and crs
+                input_tile_metadata = self._find_input_tile_metadata(tile_file)
+                if input_tile_metadata:
+                    bounds_converter = BoundsConverter(
+                        input_tile_metadata['tile_bounds'],
+                        input_tile_metadata['crs'],
+                        BoundsConverter.GPS_CRS)
+                    bounds_gps = bounds_converter.get_bounds()
+                    crs_gps = bounds_converter.target_crs
+                    center_gps = bounds_converter.get_center()
+                else:
+                    bounds_gps = None
+                    center_gps = None
+                    crs_gps = None
+
                 # TODO(gh/issue/..): add image metadata like annotations
                 flat_metadata.append({
                     "image": {
                         "source": os.path.abspath(tile_path),
                         "preview": os.path.abspath(tile_preview_path) if tile_preview_path else None,
                         "origin": [x, y],
-                        "index": tile_index
+                        "index": tile_index,
+                        "bounds": bounds_gps,
+                        "crs": crs_gps,
+                        "center": {
+                            "lon": center_gps[0],
+                            "lat": center_gps[1]
+                        }
                     },
                     "parent": {
                         "name": site_name,
-                        "image": {
-                            "source": None,  # Will be set after stitching
-                            "preview": None  # Will be set after stitching
-                        }
+                        "image": {}  # Will be set after stitching
                     }
                 })
                 tile_index += 1
@@ -241,10 +312,17 @@ class TileStitcher:
             # Update all tiles for this site with the parent image info
             for metadata_item in flat_metadata:
                 if metadata_item["parent"]["name"] == site_name:
-                    metadata_item["parent"]["image"]["source"] = os.path.abspath(
-                        output_path)
-                    metadata_item["parent"]["image"]["preview"] = os.path.abspath(
-                        stitched_preview_path) if stitched_preview_path else None
+                    metadata_item["parent"]["image"].update({
+                        "source": os.path.abspath(output_path),
+                        "preview": os.path.abspath(
+                            stitched_preview_path) if stitched_preview_path else None,
+                        "bounds": site_bounds_gps,
+                        "crs": site_crs_gps,
+                        "center": {
+                            "lon": site_center_gps[0],
+                            "lat": site_center_gps[1]
+                        }
+                    })
 
         inference_metadata_path = os.path.join(
             self.output_tile_dir, "inference_tile_metadata.json")

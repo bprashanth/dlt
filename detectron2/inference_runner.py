@@ -98,13 +98,26 @@ class InferenceRunner:
             self.input_basename = None
 
         # Get the base name of the input image and add 'inference_' prefix
+        # Eg:
+        # input: foo.png
+        # output image with inference polygon: inference_foo.png
         if self.input_basename:
             output_filename = f"inference_{self.input_basename}"
         else:
             output_filename = "inference_unknown"
         self.output_png = os.path.join(output_dir, output_filename)
 
-        self.output_json = os.path.join(output_dir, "predictions.json")
+        # Create JSON filename based on test image name without extension
+        # Eg:
+        # input: foo.png
+        # output json: predictions_foo.json
+        if self.input_basename:
+            # Remove the file extension to get the base name
+            base_name_without_ext = os.path.splitext(self.input_basename)[0]
+            json_filename = f"predictions_{base_name_without_ext}.json"
+        else:
+            json_filename = "predictions_unknown.json"
+        self.output_json = os.path.join(output_dir, json_filename)
         self.logger = logging.getLogger("inference")
 
         self.test_coco_path = os.path.join(test_dir, "annotations.json")

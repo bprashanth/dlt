@@ -4,5 +4,6 @@
     "skip_annotation": true,
     "skip_training": true,
     "skip_inference": true,
-    "skip_stitching": false
+    "skip_stitching": false,
+    "skip_offloading": false
 }
