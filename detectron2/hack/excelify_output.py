@@ -83,7 +83,7 @@ def convert_json_to_excel(input_path, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True,
-                        help="Path to signed_tile_metadata.json")
+                        help="Path to offloaded_tile_metadata.json")
     parser.add_argument("--output", required=True,
                         help="Path to output Excel file (.xlsx)")
     args = parser.parse_args()

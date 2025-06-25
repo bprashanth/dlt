@@ -175,7 +175,7 @@ def main():
     parser.add_argument("--s3_bucket", type=str, default="forestfomo",
                         help="S3 bucket to offload the map to.")
     parser.add_argument("--output_metadata_path", type=str, default=None,
-                        help="Path to the signed_tile_metadata.json for the offloaded map metadata. Defaults to inference_output_dir/signed_tile_metadata.json")
+                        help="Path to the offloaded_tile_metadata.json for the offloaded map metadata. Defaults to inference_output_dir/offloaded_tile_metadata.json")
 
     args = parser.parse_args()
 
@@ -289,7 +289,7 @@ def main():
     else:
         logging.info("Step 6: Inference (Skipped)")
 
-    inference_metadata_path = None
+    stitched_metadata_path = None
     if not pipeline_config.get('skip_stitching', False):
         logging.info("Step 7: Stitching")
         stitcher = TileStitcher(
@@ -299,26 +299,26 @@ def main():
             map_preview_scale_factor=args.map_preview_scale_factor,
             tile_preview_scale_factor=args.tile_preview_scale_factor
         )
-        inference_metadata_path = stitcher.stitch()
+        stitched_metadata_path = stitcher.stitch()
     else:
         logging.info("Step 7: Stitching (Skipped)")
 
     if not pipeline_config.get('skip_offloading', False):
         if not args.output_metadata_path:
             args.output_metadata_path = os.path.join(
-                args.inference_output_dir, "signed_tile_metadata.json")
+                args.inference_output_dir, "offloaded_tile_metadata.json")
         logging.info(
             f"Step 8: Offloading to {args.s3_bucket}")
-        if not inference_metadata_path:
-            inference_metadata_path = os.path.join(
-                args.inference_output_dir, "inference_tile_metadata.json")
+        if not stitched_metadata_path:
+            stitched_metadata_path = os.path.join(
+                args.inference_output_dir, "stitched_tile_metadata.json")
 
         offloader = MapOffloader(
-            inference_metadata_path,
+            stitched_metadata_path,
             s3_bucket_name=args.s3_bucket,
             output_metadata_path=args.output_metadata_path
         )
-        output_metadata_path = offloader.process()
+        offloaded_metadata_path = offloader.process()
     else:
         logging.info("Step 8: Offloading (Skipped)")
 
