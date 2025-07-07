@@ -69,7 +69,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
-def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode, minimal_visualization, classes):
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode, minimal_visualization, classes, no_fill):
     client = docker.from_env()
 
     cmd = [
@@ -88,6 +88,8 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
     if classes:
         cmd.append("--classes")
         cmd.append(classes)
+    if no_fill:
+        cmd.append("--no_fill")
 
     container = client.containers.run(
         image=image_name,
@@ -169,6 +171,9 @@ def main():
                         help="Use minimal visualization (no legends, borders, or text).")
     parser.add_argument("--inference_classes", type=str, default=None,
                         help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
+    parser.add_argument("--inference_no_fill", action="store_true",
+                        default=True,
+                        help="Avoid filling polygons with colors, only draw borders.")
     parser.add_argument("--map_preview_scale_factor", type=float, default=0.1,
                         help="Scale factor for downscaling the stitched map orthomosaic.")
     parser.add_argument("--tile_preview_scale_factor", type=float, default=None,
@@ -278,6 +283,11 @@ def main():
 
     if not pipeline_config.get('skip_inference', False):
         logging.info("Step 6: Inference")
+        if args.inference_classes == "all" or args.inference_classes == "":
+            logging.info(
+                "Inference classes set to all, no filtering will be done")
+            args.inference_classes = None
+
         launch_inference_in_docker(
             args.inference_weights_path,
             args.inference_test_image,
@@ -287,7 +297,8 @@ def main():
             args.inference_confidence_threshold,
             args.inference_gradio_mode,
             args.inference_minimal_visualization,
-            args.inference_classes
+            args.inference_classes,
+            args.inference_no_fill
         )
     else:
         logging.info("Step 6: Inference (Skipped)")

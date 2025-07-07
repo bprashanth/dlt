@@ -3,8 +3,8 @@
     "skip_tiling": true,
     "skip_annotation": true,
     "skip_training": true,
-    "skip_inference": true,
+    "skip_inference": false,
     "skip_stitching": true,
     "skip_offloading": true,
-    "skip_metrics": false
+    "skip_metrics": true
 }
