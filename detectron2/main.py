@@ -11,6 +11,7 @@ from tiling import TileGenerator
 from annotation import AnnotationBuilder
 from tiling import TileStitcher
 from offloading import MapOffloader
+from metrics import MapMetrics
 
 
 def setup_logger(log_level=logging.INFO):
@@ -176,6 +177,8 @@ def main():
                         help="S3 bucket to offload the map to.")
     parser.add_argument("--output_metadata_path", type=str, default=None,
                         help="Path to the offloaded_tile_metadata.json for the offloaded map metadata. Defaults to inference_output_dir/offloaded_tile_metadata.json")
+    parser.add_argument("--output_metrics_path", type=str, default=None,
+                        help="Path to the map_metrics.json for the map metrics. Defaults to inference_output_dir/map_metrics.json")
 
     args = parser.parse_args()
 
@@ -303,15 +306,18 @@ def main():
     else:
         logging.info("Step 7: Stitching (Skipped)")
 
+    # If stitching is skipped, assume stitched metadata exists and offload it
+    # + derive metrics from it
+    if not stitched_metadata_path:
+        stitched_metadata_path = os.path.join(
+            args.inference_output_dir, "stitched_tile_metadata.json")
+
     if not pipeline_config.get('skip_offloading', False):
         if not args.output_metadata_path:
             args.output_metadata_path = os.path.join(
                 args.inference_output_dir, "offloaded_tile_metadata.json")
         logging.info(
             f"Step 8: Offloading to {args.s3_bucket}")
-        if not stitched_metadata_path:
-            stitched_metadata_path = os.path.join(
-                args.inference_output_dir, "stitched_tile_metadata.json")
 
         offloader = MapOffloader(
             stitched_metadata_path,
@@ -319,8 +325,25 @@ def main():
             output_metadata_path=args.output_metadata_path
         )
         offloaded_metadata_path = offloader.process()
+        logging.info(
+            f"Offloaded metadata written to: {offloaded_metadata_path}")
     else:
         logging.info("Step 8: Offloading (Skipped)")
+
+    if not pipeline_config.get('skip_metrics', False):
+        logging.info("Step 9: Computing Map Metrics")
+        if not args.output_metrics_path:
+            args.output_metrics_path = os.path.join(
+                args.inference_output_dir, "map_metrics.json")
+        metrics = MapMetrics(
+            stitched_metadata_path,
+            args.output_metrics_path,
+            args.tile_size
+        )
+        metrics_path = metrics.process()
+        logging.info(f"Map metrics written to: {metrics_path}")
+    else:
+        logging.info("Step 9: Computing Map Metrics (Skipped)")
 
 
 if __name__ == "__main__":

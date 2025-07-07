@@ -174,6 +174,24 @@ This will
 1. First run inference on all images in the test dir (by invoking `single_inference` on each image) 
 2. Then stitch them together (by again invoking `single_infrence` with the right `pipeline_config`)
 
+
+### Running individual stages in the pipeline 
+
+Sometimes it might be desirable to run a single stage, like offloading or metrics generation. 
+Modify the `pipeline_config.json` appropriately, then run 
+```
+$ ./single_inference.sh -output_dir ./inference -weights ./checkpoints/all/model_final.pth
+```
+This is typically done right after batch mode, since batch mode halts at stitching. 
+
+### Generating excels 
+
+If you wish to generate an excel from `offloaded_tile_metadata.json` + `map_metrics.json` you can run 
+```
+$ python3 hack/excelify_output.py --offloaded_metadata ./inference/offloaded_tile_metadata.json --output_excel ~/Documents/dlt/sites.xlsx --map_metrics ./inference/map_metrics.json
+```
+
+
 ## Data "Discovery" 
 
 The scripts in this directory will help assess and reformat datasets.

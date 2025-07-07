@@ -4,9 +4,20 @@ import pandas as pd
 import urllib.parse
 
 
-def convert_json_to_excel(input_path, output_path):
-    with open(input_path) as f:
+def convert_json_to_excel(offloaded_metadata_path, map_metrics_path, output_path):
+    # Load the offloaded metadata
+    with open(offloaded_metadata_path) as f:
         data = json.load(f)
+
+    # Load the map metrics
+    with open(map_metrics_path) as f:
+        map_metrics_data = json.load(f)
+
+    # Create a lookup dictionary for map metrics by site name
+    map_metrics_lookup = {}
+    for metric_entry in map_metrics_data:
+        site_name = metric_entry["name"]
+        map_metrics_lookup[site_name] = metric_entry["stats"]
 
     tiles = []
     sites_dict = {}
@@ -23,15 +34,16 @@ def convert_json_to_excel(input_path, output_path):
         tile_info = {
             "site_id": site_name,
             "index": entry["image"].get("index"),
-            "origin_x": entry["image"]["origin"][0],
-            "origin_y": entry["image"]["origin"][1],
+            "origin_x": entry["image"]["pixel_origin"][0],
+            "origin_y": entry["image"]["pixel_origin"][1],
             "tile_url": tile_url,
             "tile_preview": tile_preview,
             # Add GPS coordinates for tiles
             "bounds": entry["image"].get("bounds"),
             "lon": entry["image"].get("center")["lon"],
             "lat": entry["image"].get("center")["lat"],
-            "crs": entry["image"].get("crs")
+            "crs": entry["image"].get("crs"),
+            "size": entry["image"].get("size")
         }
         tiles.append(tile_info)
 
@@ -40,7 +52,7 @@ def convert_json_to_excel(input_path, output_path):
             map_url = parent_image.get("source")
             preview_url = parent_image.get("preview")
 
-            sites_dict[site_name] = {
+            site_info = {
                 "site_id": site_name,
                 "map_url": map_url,
                 "preview_url": preview_url,
@@ -50,6 +62,15 @@ def convert_json_to_excel(input_path, output_path):
                 "lat": parent_image.get("center")["lat"],
                 "crs": parent_image.get("crs")
             }
+
+            # Add map metrics stats if available for this site
+            if site_name in map_metrics_lookup:
+                site_stats = map_metrics_lookup[site_name]
+                # Add each stat as a separate column
+                for stat_name, stat_value in site_stats.items():
+                    site_info[stat_name] = stat_value
+
+            sites_dict[site_name] = site_info
 
     tiles_df = pd.DataFrame(tiles)
     sites_df = pd.DataFrame(sites_dict.values())
@@ -82,10 +103,13 @@ def convert_json_to_excel(input_path, output_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True,
+    parser.add_argument("--offloaded_metadata", required=True,
                         help="Path to offloaded_tile_metadata.json")
-    parser.add_argument("--output", required=True,
+    parser.add_argument("--map_metrics", required=True,
+                        help="Path to map_metrics.json")
+    parser.add_argument("--output_excel", required=True,
                         help="Path to output Excel file (.xlsx)")
     args = parser.parse_args()
 
-    convert_json_to_excel(args.input, args.output)
+    convert_json_to_excel(args.offloaded_metadata,
+                          args.map_metrics, args.output_excel)
