@@ -85,7 +85,7 @@ class GradioLauncher:
 
 
 class InferenceRunner:
-    def __init__(self, weights_path, output_dir, test_dir, confidence_threshold=0.3, test_image=None, minimal_visualization=False, selected_classes=None):
+    def __init__(self, weights_path, output_dir, test_dir, confidence_threshold=0.3, test_image=None, minimal_visualization=False, selected_classes=None, no_fill=True):
         self.weights_path = weights_path
         self.output_dir = output_dir
         self.test_dir = test_dir
@@ -130,7 +130,7 @@ class InferenceRunner:
 
         self.predictor = DefaultPredictor(self.cfg)
         self.visualizer = DetectronVisualizer(
-            self.class_names, selected_classes, minimal_visualization)
+            self.class_names, selected_classes, minimal_visualization, no_fill)
 
     def _get_config(self):
         cfg = get_cfg()
@@ -187,6 +187,8 @@ def main():
                         help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
     parser.add_argument("--minimal_visualization", action="store_true",
                         help="Use minimal visualization (no legends, borders, or text).")
+    parser.add_argument("--no_fill", action="store_true", default=True,
+                        help="Avoid filling polygons with colors, only draw borders.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
@@ -214,7 +216,8 @@ def main():
             confidence_threshold=args.confidence_threshold,
             test_image=args.test_image,
             minimal_visualization=args.minimal_visualization,
-            selected_classes=selected_classes
+            selected_classes=selected_classes,
+            no_fill=args.no_fill
         )
         # Pass selected_classes to run method
         runner.run()

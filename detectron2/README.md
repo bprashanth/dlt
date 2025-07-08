@@ -1,10 +1,12 @@
 # Detectron2
 
-Drone Lantana Detectors based on Detectron2
+Drone Lantana Detector based on Detectron2
 
 For a quickstart and a brief overview of the pipeline, continue reading. For everything else, see [docs](./docs/). 
 
 ## Pipeline 
+
+Stages marked with a `*` below are incomplete.
 
 ```console 
      1. Discovery 
@@ -13,7 +15,7 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 	|
      2. Validation
 	| - Are the polygons in the shp file intersecting the geotiffs?
-	| - Are there Null or corrupt polygons, are the fixable? 
+	| - Are there Null or corrupt polygons, are they fixable? 
 	| - Are the CRS' and datums compatible?
 	|
      3. TileGenerator
@@ -22,9 +24,9 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 	| - Handle edge effects
 	| - Write out intermediate tile_metadata.json with tile boundaries 
 	|
-     4. Pre-processing 
-	| ??? (normalize, data augmentation etc) 
-	| 
+     4. Pre-processing*
+	| ??? (normalize, data augmentation etc)  
+        |
      5. AnnotationBuilder
 	| - Intersect shp polygons with tile boundaries 
 	| - Clip where necessary 
@@ -69,11 +71,11 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 	|
      9. Test scoring 
 	| - Compare test coco w/ prediction coco for test scores 
-	| - IOU: GT (test annotations) 
+	| - IOU*: GT (test annotations) 
 	|	 TP (predicted polygon matches GT > threshold + correct class) 
 	|        FP (predicted polygon doesn't overlap GT)
 	|        FN (a GT polygon with no matching prediction)
-	| - Diminishing returns: how much data do we need? 
+	| - Diminishing returns*: how much data do we need? 
 	| 	Loss curves
 	| 	Ablation
 	|
@@ -173,6 +175,24 @@ Run
 This will
 1. First run inference on all images in the test dir (by invoking `single_inference` on each image) 
 2. Then stitch them together (by again invoking `single_infrence` with the right `pipeline_config`)
+
+
+### Running individual stages in the pipeline 
+
+Sometimes it might be desirable to run a single stage, like offloading or metrics generation. 
+Modify the `pipeline_config.json` appropriately, then run 
+```
+$ ./single_inference.sh -output_dir ./inference -weights ./checkpoints/all/model_final.pth
+```
+This is typically done right after batch mode, since batch mode halts at stitching. 
+
+### Generating excels 
+
+If you wish to generate an excel from `offloaded_tile_metadata.json` + `map_metrics.json` you can run 
+```
+$ python3 hack/excelify_output.py --offloaded_metadata ./inference/offloaded_tile_metadata.json --output_excel ~/Documents/dlt/sites.xlsx --map_metrics ./inference/map_metrics.json
+```
+
 
 ## Data "Discovery" 
 

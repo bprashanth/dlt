@@ -11,6 +11,7 @@ from tiling import TileGenerator
 from annotation import AnnotationBuilder
 from tiling import TileStitcher
 from offloading import MapOffloader
+from metrics import MapMetrics
 
 
 def setup_logger(log_level=logging.INFO):
@@ -68,7 +69,7 @@ def launch_training_in_docker(train_dir, val_dir, output_dir, training_image, fo
     logging.info("Training completed")
 
 
-def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode, minimal_visualization, classes):
+def launch_inference_in_docker(weights_path, test_image, output_dir, image_name, test_dir, confidence_threshold, gradio_mode, minimal_visualization, classes, no_fill):
     client = docker.from_env()
 
     cmd = [
@@ -87,6 +88,8 @@ def launch_inference_in_docker(weights_path, test_image, output_dir, image_name,
     if classes:
         cmd.append("--classes")
         cmd.append(classes)
+    if no_fill:
+        cmd.append("--no_fill")
 
     container = client.containers.run(
         image=image_name,
@@ -168,6 +171,9 @@ def main():
                         help="Use minimal visualization (no legends, borders, or text).")
     parser.add_argument("--inference_classes", type=str, default=None,
                         help="Comma-separated list of class names to filter predictions. If not provided, all classes will be shown.")
+    parser.add_argument("--inference_no_fill", action="store_true",
+                        default=True,
+                        help="Avoid filling polygons with colors, only draw borders.")
     parser.add_argument("--map_preview_scale_factor", type=float, default=0.1,
                         help="Scale factor for downscaling the stitched map orthomosaic.")
     parser.add_argument("--tile_preview_scale_factor", type=float, default=None,
@@ -176,6 +182,8 @@ def main():
                         help="S3 bucket to offload the map to.")
     parser.add_argument("--output_metadata_path", type=str, default=None,
                         help="Path to the offloaded_tile_metadata.json for the offloaded map metadata. Defaults to inference_output_dir/offloaded_tile_metadata.json")
+    parser.add_argument("--output_metrics_path", type=str, default=None,
+                        help="Path to the map_metrics.json for the map metrics. Defaults to inference_output_dir/map_metrics.json")
 
     args = parser.parse_args()
 
@@ -275,6 +283,11 @@ def main():
 
     if not pipeline_config.get('skip_inference', False):
         logging.info("Step 6: Inference")
+        if args.inference_classes == "all" or args.inference_classes == "":
+            logging.info(
+                "Inference classes set to all, no filtering will be done")
+            args.inference_classes = None
+
         launch_inference_in_docker(
             args.inference_weights_path,
             args.inference_test_image,
@@ -284,7 +297,8 @@ def main():
             args.inference_confidence_threshold,
             args.inference_gradio_mode,
             args.inference_minimal_visualization,
-            args.inference_classes
+            args.inference_classes,
+            args.inference_no_fill
         )
     else:
         logging.info("Step 6: Inference (Skipped)")
@@ -303,15 +317,18 @@ def main():
     else:
         logging.info("Step 7: Stitching (Skipped)")
 
+    # If stitching is skipped, assume stitched metadata exists and offload it
+    # + derive metrics from it
+    if not stitched_metadata_path:
+        stitched_metadata_path = os.path.join(
+            args.inference_output_dir, "stitched_tile_metadata.json")
+
     if not pipeline_config.get('skip_offloading', False):
         if not args.output_metadata_path:
             args.output_metadata_path = os.path.join(
                 args.inference_output_dir, "offloaded_tile_metadata.json")
         logging.info(
             f"Step 8: Offloading to {args.s3_bucket}")
-        if not stitched_metadata_path:
-            stitched_metadata_path = os.path.join(
-                args.inference_output_dir, "stitched_tile_metadata.json")
 
         offloader = MapOffloader(
             stitched_metadata_path,
@@ -319,8 +336,25 @@ def main():
             output_metadata_path=args.output_metadata_path
         )
         offloaded_metadata_path = offloader.process()
+        logging.info(
+            f"Offloaded metadata written to: {offloaded_metadata_path}")
     else:
         logging.info("Step 8: Offloading (Skipped)")
+
+    if not pipeline_config.get('skip_metrics', False):
+        logging.info("Step 9: Computing Map Metrics")
+        if not args.output_metrics_path:
+            args.output_metrics_path = os.path.join(
+                args.inference_output_dir, "map_metrics.json")
+        metrics = MapMetrics(
+            stitched_metadata_path,
+            args.output_metrics_path,
+            args.tile_size
+        )
+        metrics_path = metrics.process()
+        logging.info(f"Map metrics written to: {metrics_path}")
+    else:
+        logging.info("Step 9: Computing Map Metrics (Skipped)")
 
 
 if __name__ == "__main__":

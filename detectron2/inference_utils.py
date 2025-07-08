@@ -16,18 +16,20 @@ import tempfile
 class DetectronVisualizer:
     EDGE_COLOR = 'red'
 
-    def __init__(self, class_names, selected_classes=None, minimal_visualization=False):
+    def __init__(self, class_names, selected_classes=None, minimal_visualization=False, no_fill=False):
         """Initialize the DetectronVisualizer.
 
         @param output_dir: Directory where visualizations and predictions will be saved
         @param class_names: List of class names corresponding to model predictions
         @param selected_classes: Optional list of class names to filter
         @param minimal_visualization: If True, only draws polygons without legends, borders, or text
+        @param no_fill: If True, polygons will not be filled (only borders will be drawn)
         """
         self.class_names = class_names
         self.logger = logging.getLogger("visualizer")
         self.selected_classes = selected_classes
         self.minimal_visualization = minimal_visualization
+        self.no_fill = no_fill
 
     def _merge_overlapping_contours(self, contours, image_shape):
         """Merge overlapping or intersecting contours into a single continuous border.
@@ -122,21 +124,24 @@ class DetectronVisualizer:
                 class_contours[class_id] = []
             class_contours[class_id].extend(contours)
 
-            # Draw filled polygons
-            for contour in contours:
-                polygon = contour[:, 0, :]
-                patch = patches.Polygon(
-                    polygon,
-                    closed=True,
-                    edgecolor='none',
-                    facecolor=color,
-                    alpha=0.2,
-                    linewidth=0
-                )
-                ax.add_patch(patch)
+            # Draw filled polygons (only if no_fill is False)
+            if not self.no_fill:
+                for contour in contours:
+                    polygon = contour[:, 0, :]
+                    patch = patches.Polygon(
+                        polygon,
+                        closed=True,
+                        edgecolor='none',
+                        facecolor=color,
+                        alpha=0.2,
+                        linewidth=0
+                    )
+                    ax.add_patch(patch)
 
-                # Only add text (confidence score) if not in minimal mode
-                if not self.minimal_visualization:
+            # Only add text (confidence score) if not in minimal mode
+            if not self.minimal_visualization:
+                for contour in contours:
+                    polygon = contour[:, 0, :]
                     centroid = np.mean(polygon, axis=0)
                     ax.text(centroid[0], centroid[1], f"{score:.2f}",
                             color='white', fontsize=8,

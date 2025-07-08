@@ -21,7 +21,8 @@ class MapOffloader:
     @param s3_bucket_name: Name of the S3 bucket to upload to.
     @param region: Region of the S3 bucket.
     @param output_metadata_path: Path to the output metadata file.
-    @param expiry_seconds: Expiry time for the presigned URLs.
+    @param expiry_seconds: Expiry time for the presigned URLs. 
+        Defaults to 1 week. 
     """
 
     def __init__(self,
@@ -29,7 +30,7 @@ class MapOffloader:
                  s3_bucket_name="forestfomo",
                  region="ap-south-1",
                  output_metadata_path=None,
-                 expiry_seconds=86400):
+                 expiry_seconds=604800):
         self.metadata_path = metadata_path
         self.bucket_name = s3_bucket_name
         self.region = region
