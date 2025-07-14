@@ -1,6 +1,10 @@
-# Detectron2
+# DLT: Drone Lantana Tracking 
+
+<img src="https://github.com/T4GC-Official/count/raw/main/docs/assets/dronelantana.png" width="300">
 
 Drone Lantana Detector based on Detectron2
+
+---
 
 For a quickstart and a brief overview of the pipeline, continue reading. For everything else, see [docs](./docs/). 
 

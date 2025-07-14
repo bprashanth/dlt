@@ -1,3 +1,19 @@
+# Run a single inference on a given image and save the results to a given 
+# directory. Example usage:
+#  
+# UI/Gradio mode: 
+# ./single_inference.sh \
+#   -output_dir ./inference \
+#   -weights ./checkpoints/all/model_final.pth \
+#   -gradio
+#
+# Minimal mode (no legends, borders, or text):
+# ./single_inference.sh \
+#   -image ./data/test/images/Hulibanda_Cleared_plot_1_x7467_y3840.png \
+#   -output_dir ./inference \
+#   -weights ./checkpoints/all/model_final.pth \
+#   -min
+
 #!/bin/bash
 
 # Check if minimum required arguments are provided
