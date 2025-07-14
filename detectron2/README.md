@@ -1,6 +1,5 @@
 # DLT: Drone Lantana Tracking 
-
-<img src="https://github.com/T4GC-Official/count/raw/main/docs/assets/dronelantana.png" width="300">
+<img src="https://github.com/bprashanth/dlt/blob/main/detectron2/docs/assets/dronelanatan.png" width="300">
 
 Drone Lantana Detector based on Detectron2
 
