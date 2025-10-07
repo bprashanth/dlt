@@ -1,4 +1,74 @@
-# Data explorations 
+# Data Standards 
+
+## Input standards 
+
+The goal of the `discovery -> validation -> tiling` parts of the pipelin is to transform the data from eg
+```
+root_dir/
+├── Labels_Polygons_All.shp (and friends)
+├── Gavihalla/
+│   └── Gavihalla.tiff
+├── Hosur Gerati/
+│   └── Hosur Gerati.tiff
+...
+```
+
+Into
+
+```
+app/
+├── test
+├── train/
+│   └── annotations.json
+│   └── imag1.png
+│
+├── val/
+│   └── annotations.json
+│   └── imag1.png
+...
+```
+This requires a few standards.
+
+1. __Directory layout__: The directories should match the description above. 
+2. __Schema__: The `shp` files should match this schema (if it doesn't we will insert blanks, but that could end up corrupting the dataset). 
+```
+Driver: ESRI Shapefile
+CRS: EPSG:4326
+Geometry Type: Polygon
+
+Attribute Fields (Schema):
+  id: int:10
+  Types: int:10
+  Name: str:100
+  Place: str:100
+
+Attributes of the First Feature:
+  id: None
+  Types: 0
+  Name: Open Space
+  Place: Gavihalla
+```
+3. __Categories__: 
+
+As much as possible, match these categories 
+```
+ Types             Name
+     0       Open Space
+     1            Senna
+     2           Bamboo
+     3     Water Bodies
+     4    Lantana Cover
+     5            Trees
+     6      Chromolaena
+     7 Agriculture Land
+     8     Coconut Tree
+     9            House
+```
+If you have a new category, add it at the end (i.e index: 10). 
+If you only have a subset of these categories, use the same indices (e.g. always keep `Types: 4 == Name: Lantana Cover`).
+See [docs/categories.md](./categories.md) for more details.
+
+## Exploring the data 
 
 * Viewing the annotations laid over the tiff
 ```
