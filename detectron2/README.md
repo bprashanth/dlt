@@ -10,6 +10,7 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 ## Pipeline 
 
 Stages marked with a `*` below are incomplete.
+How to share data? see this [doc](./docs/data.md)
 
 ```console 
      1. Discovery 
