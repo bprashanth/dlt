@@ -11,6 +11,7 @@ For a quickstart and a brief overview of the pipeline, continue reading. For eve
 ## Pipeline 
 
 Stages marked with a `*` below are incomplete.
+How to share data? see this [doc](./docs/data.md)
 
 ```console 
      1. Discovery 
@@ -29,8 +30,8 @@ Stages marked with a `*` below are incomplete.
 	| - Write out intermediate tile_metadata.json with tile boundaries 
 	|
      4. Pre-processing*
-	| ??? (normalize, data augmentation etc)  
-        |
+    | ??? (normalize, data augmentation etc)  
+    |
      5. AnnotationBuilder
 	| - Intersect shp polygons with tile boundaries 
 	| - Clip where necessary 
@@ -65,14 +66,14 @@ Stages marked with a `*` below are incomplete.
 	| - If ground truth annotations specified, display for comparison
 	|
 	User chooses Gradio Mode 
-	 \--> Launch Docker --> Run Gradio server 
+         \--> Launch Docker --> Run Gradio server 
           \--> User uploads image, chooses weights + threshold + classes --> InferenceRunner is invoked per image 
-	---|
-	|
-        | Batch mode
-        | - Invokes single file mode for all files in a given input dir
-        | - Stitches these files together (see post-processing stage) 
-	|
+        ---|
+    |
+    | Batch mode
+    | - Invokes single file mode for all files in a given input dir
+    | - Stitches these files together (see post-processing stage) 
+    |
      9. Test scoring 
 	| - Compare test coco w/ prediction coco for test scores 
 	| - IOU*: GT (test annotations) 
@@ -80,22 +81,22 @@ Stages marked with a `*` below are incomplete.
 	|        FP (predicted polygon doesn't overlap GT)
 	|        FN (a GT polygon with no matching prediction)
 	| - Diminishing returns*: how much data do we need? 
-	| 	Loss curves
-	| 	Ablation
+	|	Loss curves
+	|	Ablation
 	|
      10. Stitching
-        | - Stitch tiles together to form a mosaic 
-        | - For tiles that are absent in the output dir, replace them with tiles from the input dir 
-        | - Resizes the stitched  mosaic map to a manageable size for the frontend 
-	| - Generates an `inference_tile_metadata.json` with parent child relationships of tiles/mosaics 
-	|
+    | - Stitch tiles together to form a mosaic 
+    | - For tiles that are absent in the output dir, replace them with tiles from the input dir 
+    | - Resizes the stitched  mosaic map to a manageable size for the frontend 
+    | - Generates an `inference_tile_metadata.json` with parent child relationships of tiles/mosaics 
+    |
      11. Offloading 
-        | - Generate signed s3 urls for each entry in `inference_tile_metadata.json`
-	| - Generate an `output_tile_metadata.xlsx` which can be uploaded to the frontend or shared 
-        | 
+    | - Generate signed s3 urls for each entry in `inference_tile_metadata.json`
+    | - Generate an `output_tile_metadata.xlsx` which can be uploaded to the frontend or shared 
+    | 
      12. Metrics
-	| - Per (site, category, tile) metrics 
-	| ??? (generate histograms/heatmaps)
+    | - Per (site, category, tile) metrics 
+    | ??? (generate histograms/heatmaps)
 ```
 
 - Steps 1-4: Discovery, validation, tiling and COCO annotation transformation
