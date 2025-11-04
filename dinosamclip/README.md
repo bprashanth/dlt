@@ -30,7 +30,8 @@ $ docker run -it --rm \
   sam-clip:0.2 \
   bash
 $ rm -rf ./output/* && python sam_clip.py --image lantana.jpg --output_dir ./output/ --model {maskrcnn, samclip, groundingdino}
-$ 
+# OR, by specifying the prompt 
+$ python sam_clip.py --image ./input_images/IMG-20250924-WA0001.jpg --clip-text_prompt "a hand filled survey form" 
 ```
 
 
