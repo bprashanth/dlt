@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libgl1-mesa-glx \
+    libgl1 \
     git \
     g++ \
     build-essential \
@@ -31,11 +31,10 @@ COPY requirements-docker.txt .
 RUN pip install --no-cache-dir torch==2.1.0+cpu torchvision==0.16.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 
 RUN pip install --no-cache-dir -r requirements-docker.txt
-
+    
 
 # Install Detectron2
-RUN python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
-
+RUN python -m pip install --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
 # Install Jupyter Notebook
 RUN pip install jupyter
 
